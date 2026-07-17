@@ -1,0 +1,12 @@
+<<<<<<< HEAD
+venv/
+node_modules/
+__pycache__/
+.env
+=======
+.env
+venv/
+rag_venv/
+__pycache__/
+*.pyc
+>>>>>>> 58e47f2b5af665f4f5c8bf12468deab8e152cdcf
