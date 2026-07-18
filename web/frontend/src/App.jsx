@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import './App.css';
+import UploadView from './components/UploadView';
 
 function App() {
   const [status, setStatus] = useState('checking...');
@@ -15,6 +16,8 @@ function App() {
     <div style={{ textAlign: 'center', marginTop: '4rem' }}>
       <h1>Quantum Learning Workspace</h1>
       <p>Backend status : <strong>{status}</strong></p>
+
+      <UploadView />
     </div>
   );
 }
