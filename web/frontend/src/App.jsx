@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import './App.css';
 import UploadView from './components/UploadView';
+import Dashboard from './components/Dashboard';
 
 function App() {
   const [status, setStatus] = useState('checking...');
@@ -18,6 +19,7 @@ function App() {
       <p>Backend status : <strong>{status}</strong></p>
 
       <UploadView />
+      <Dashboard />
     </div>
   );
 }
