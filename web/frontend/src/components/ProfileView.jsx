@@ -29,7 +29,7 @@ export default function ProfileView() {
   const [formMsg, setFormMsg] = useState({ text: "", type: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const API_BASE = "http://localhost:5000";
+  const API_BASE = "http://localhost:8000";
   const initial = userEmail ? userEmail[0].toUpperCase() : "U";
   const displayName = userEmail ? userEmail.split("@")[0] : "Student User";
 
