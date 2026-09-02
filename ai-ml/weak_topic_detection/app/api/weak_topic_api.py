@@ -1,4 +1,4 @@
-from app.services.weak_topic_service import WeakTopicService
+from weak_topic_detection.app.services.weak_topic_service import WeakTopicService
 
 
 class WeakTopicAPI:

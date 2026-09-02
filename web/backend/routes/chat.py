@@ -46,9 +46,24 @@ async def ask(
     # Strictly derive user_id from the authenticated JWT session (email) only.
     resolved_user_id = current_user_email
 
+    # Helper to check if user is asking for a general summary/overview
+    q_lower = request.question.lower().strip()
+    summary_phrases = [
+        "tell me about this document", "tell me about this", "summarize",
+        "overview", "what is this document about", "explain this document",
+        "what does this document say", "summary"
+    ]
+
+    outgoing_question = request.question
+    if any(p in q_lower for p in summary_phrases):
+        if request.filename:
+            outgoing_question = f"Provide a detailed summary and overview of the main topics, sections, and key details in the document '{request.filename}'."
+        else:
+            outgoing_question = "Provide a detailed summary and overview of the main topics, sections, and key details in the uploaded study documents."
+
     # Build payload for chatbot service
     payload: Dict[str, Any] = {
-        "question": request.question,
+        "question": outgoing_question,
         "user_id": resolved_user_id,
         "history": [
             {
@@ -93,7 +108,13 @@ async def ask(
             )
 
         if response.status_code == 200:
-            return response.json()
+            res_json = response.json()
+            # If user sent a simple greeting, do not attach unrelated document sources
+            greetings = {"hi", "hello", "hey", "good morning", "good evening", "thanks", "thank you", "hi!", "hello!"}
+            if request.question.lower().strip() in greetings:
+                res_json["sources"] = []
+                res_json["timing"] = None
+            return res_json
 
         error_detail = response.text
         try:

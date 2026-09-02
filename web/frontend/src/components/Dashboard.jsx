@@ -881,7 +881,7 @@ function ChatView({ targetDocument, setTargetDocument }) {
                   </div>
                 )}
 
-                {msg.sources && msg.sources.length > 0 && (
+                {msg.sources && msg.sources.length > 0 && !/^(hello|hi|hey)[!,.\s]/i.test(msg.content.trim()) && (
                   <div className="msg-sources">
                     <span className="sources-title">🔍 Sources:</span>
                     <div className="sources-list">

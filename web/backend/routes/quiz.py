@@ -57,11 +57,28 @@ async def generate_quiz_proxy(
         "Authorization": f"Bearer {create_access_token(user_id)}"
     }
 
+    quiz_type_map = {
+        "multiple_choice": "mcq",
+        "multiple choice": "mcq",
+        "multiple-choice": "mcq",
+        "mcq": "mcq",
+        "true_false": "true_false",
+        "true/false": "true_false",
+        "true-false": "true_false",
+        "fill_blank": "fill_blank",
+        "fill in the blank": "fill_blank",
+        "fill_in_the_blank": "fill_blank",
+        "short_answer": "short_answer",
+        "short answer": "short_answer",
+    }
+    raw_type = (body.quiz_type or "mcq").lower().strip()
+    mapped_quiz_type = quiz_type_map.get(raw_type, raw_type)
+
     target_url = f"{QUIZ_SERVICE_URL.rstrip('/')}/generate-quiz"
     payload = {
         "topic": body.topic.strip(),
         "question_count": body.question_count,
-        "quiz_type": body.quiz_type,
+        "quiz_type": mapped_quiz_type,
     }
 
     try:
