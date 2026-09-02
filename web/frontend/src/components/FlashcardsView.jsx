@@ -12,7 +12,7 @@ const QUICK_TOPICS = [
   "Organic Chemistry",
 ];
 
-const API_BASE = "http://localhost:5000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 export default function FlashcardsView() {
   const { token, handle401 } = useAuth();
