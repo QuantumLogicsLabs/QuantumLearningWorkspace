@@ -21,7 +21,7 @@ export default function QuizView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
-  const API_BASE = "http://localhost:5000";
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   // Handle quiz generation
   const handleGenerateQuiz = async (e) => {

@@ -184,7 +184,7 @@ function DocumentsView({ onAskAboutDocument }) {
   const [sortOption, setSortOption] = useState("Newest");
 
   
-  const API_BASE = "http://localhost:5000";
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   function fetchUploads(isSilent = false) {
     if (!isSilent) {
@@ -591,7 +591,7 @@ function ChatView({ targetDocument, setTargetDocument }) {
   const [isLoading, setIsLoading] = useState(false);
 
   
-  const API_BASE = "http://localhost:5000";
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   const getStorageKey = () => {
     return userEmail ? `studymind_chat_history_${userEmail}` : "studymind_chat_history";
