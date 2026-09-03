@@ -43,6 +43,7 @@ logger = logging.getLogger("uvicorn")
 app = FastAPI(title="StudyMind AI Backend")
 
 origins = [
+    "https://quantum-learning-workspace.vercel.app",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:3000",
@@ -601,3 +602,4 @@ async def get_quiz_results_by_user_id(
         })
 
     return results
+
