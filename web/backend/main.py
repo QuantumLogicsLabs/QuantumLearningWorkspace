@@ -560,6 +560,8 @@ async def get_quiz_results(current_user_email: str = Depends(get_current_user_em
     async for doc in cursor:
         dt = doc.get("date_taken")
         if isinstance(dt, datetime):
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
             dt = dt.isoformat()
         results.append({
             "id": str(doc.get("_id", "")),
@@ -589,6 +591,8 @@ async def get_quiz_results_by_user_id(
     async for doc in cursor:
         dt = doc.get("date_taken")
         if isinstance(dt, datetime):
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
             dt = dt.isoformat()
         results.append({
             "id": str(doc.get("_id", "")),
