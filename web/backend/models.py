@@ -162,3 +162,21 @@ class TopicReviewStatsResponse(BaseModel):
     user_id: str
     weak_topics: List[WeakTopicSummary]
     total_reviews: int
+
+
+class RoadmapNextStep(BaseModel):
+    step_number: int
+    topic: str
+    description: str
+    estimated_duration: Optional[str] = "1-2 days"
+    priority: str = "recommended"  # "high", "medium", "recommended"
+    action_label: str = "Start Study"
+    target_tab: str = "quiz"
+
+
+class RoadmapNextStepsResponse(BaseModel):
+    success: bool = True
+    user_id: str
+    subject: str = "Personalized Study Roadmap"
+    total_steps: int
+    next_steps: List[RoadmapNextStep]

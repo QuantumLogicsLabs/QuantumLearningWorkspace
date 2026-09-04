@@ -5,6 +5,7 @@ import ProfileView from "./ProfileView.jsx";
 import QuizView from "./QuizView.jsx";
 import QuizResultsView from "./QuizResultsView.jsx";
 import FlashcardsView from "./FlashcardsView.jsx";
+import RecommendedNextSteps from "./RecommendedNextSteps.jsx";
 import LogoutModal from "./LogoutModal.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
 import "./Dashboard.css";
@@ -164,7 +165,7 @@ function TopBar({ activeTab }) {
   );
 }
 
-function DocumentsView({ onAskAboutDocument }) {
+function DocumentsView({ onAskAboutDocument, onNavigate }) {
   const { token, handle401 } = useAuth();
   const { showToast } = useToast();
   const [files, setFiles] = useState([]);
@@ -334,6 +335,9 @@ function DocumentsView({ onAskAboutDocument }) {
 
   return (
     <div className="documents-view">
+      {/* Recommended Next Steps Summary Section */}
+      <RecommendedNextSteps onNavigate={onNavigate} />
+
       {/* Upload Card */}
       <div className="upload-card">
         <h3>Upload Document</h3>
@@ -985,7 +989,10 @@ export default function Dashboard() {
         <TopBar activeTab={activeTab} />
         <div className="page-content">
           {activeTab === "documents" && (
-            <DocumentsView onAskAboutDocument={handleAskAboutDocument} />
+            <DocumentsView
+              onAskAboutDocument={handleAskAboutDocument}
+              onNavigate={setActiveTab}
+            />
           )}
           {activeTab === "chat" && (
             <ChatView
