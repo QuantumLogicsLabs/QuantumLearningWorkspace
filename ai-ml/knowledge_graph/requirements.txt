@@ -1,0 +1,12 @@
+# Core dependencies — numpy and chromadb are likely already installed
+# via embedding/requirements.txt, but listed here so this module's
+# requirements are self-contained.
+numpy
+chromadb
+fastapi
+uvicorn
+python-dotenv
+pyjwt
+
+# For running tests
+pytest

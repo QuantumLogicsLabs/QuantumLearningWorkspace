@@ -8,3 +8,14 @@ uvicorn                 # ASGI server to run FastAPI
 python-multipart        # Needed by FastAPI for file uploads (PDF endpoint)
 pydantic                # Request body validation (already a FastAPI dependency)
 yt_dlp                  # Download metadata/transcripts when needed
+sentence-transformers   # free, local embedding model (no API key, no per-call cost)
+pinecone                # Pinecone vector database client
+chromadb
+pymongo                 # MongoDB client
+python-dotenv           # loads .env config
+requests
+python-dotenv
+groq
+yake
+pytest
+pyjwt

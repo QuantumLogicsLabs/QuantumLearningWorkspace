@@ -1,76 +1,332 @@
-# StudyMind AI — Personal AI Learning Workspace
+<div align="center">
 
-## 📌 Overview
-StudyMind AI is a personal AI-powered learning workspace where students can upload learning material from multiple sources — PDFs, YouTube lectures, web articles, and personal notes — and let the system understand it, answer questions, generate study aids, and guide their learning journey.
+# 🧠 StudyMind AI
 
-This is **not** a simple chatbot. It's an intelligent learning ecosystem that:
-- Understands content from multiple sources (PDF, YouTube, articles, notes)
-- Builds a knowledge graph connecting related concepts
-- Answers questions using Retrieval-Augmented Generation (RAG)
-- Auto-generates flashcards and quizzes
-- Identifies weak topics and builds a personalized study roadmap
-- Remembers past conversations and context over time
+### *Your Personal AI-Powered Learning Workspace*
 
-## 🎯 Objectives
-1. Let users bring learning material from multiple sources into one place
-2. Process and understand that material using AI (not just store it)
-3. Enable users to "talk" to their own material via a RAG-based chatbot
-4. Automatically generate study aids (flashcards, quizzes)
-5. Track weak topics and recommend what to study next
-6. Maintain long-term memory across sessions
+<img src="https://readme-typing-svg.demolab.com?font=Inter&weight=600&size=24&pause=1000&color=6C63FF&center=true&vCenter=true&width=700&lines=Learn+Smarter.;Chat+with+Your+Notes.;Generate+Flashcards.;Build+Knowledge.;Powered+by+AI." />
 
-## 🧩 Project Structure
+---
 
+### 📚 Upload • 💬 Ask • 🧠 Understand • 🎯 Master
+
+*A next-generation AI learning platform that transforms your PDFs, YouTube lectures, articles, and notes into an intelligent personal tutor.*
+
+![React](https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react)
+![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?style=for-the-badge&logo=fastapi)
+![Python](https://img.shields.io/badge/Python-3.12-yellow?style=for-the-badge&logo=python)
+![MongoDB](https://img.shields.io/badge/MongoDB-Database-green?style=for-the-badge&logo=mongodb)
+![OpenAI](https://img.shields.io/badge/OpenAI-LLM-black?style=for-the-badge&logo=openai)
+![RAG](https://img.shields.io/badge/RAG-AI-purple?style=for-the-badge)
+
+</div>
+
+---
+
+# 🚀 Overview
+
+**StudyMind AI** isn't just another chatbot.
+
+It's your **personal AI learning ecosystem** that understands everything you study, remembers it, connects concepts together, and helps you master subjects through intelligent conversations and personalized learning.
+
+Instead of searching through dozens of PDFs, YouTube videos, or lecture notes, simply upload everything once—and let AI do the heavy lifting.
+
+---
+
+# ✨ Core Features
+
+## 📄 Multi-Source Learning
+
+Bring all your learning material together.
+
+- 📚 PDF Notes
+- 🎥 YouTube Lectures
+- 🌐 Web Articles
+- 📝 Personal Notes
+
+---
+
+## 🧠 AI Understanding
+
+StudyMind doesn't just store files.
+
+It:
+
+- Extracts information
+- Understands concepts
+- Creates semantic embeddings
+- Connects related topics
+- Builds your personal knowledge base
+
+---
+
+## 💬 RAG Chatbot
+
+Talk directly with your study material.
+
+```text
+You:
+Explain Binary Search Tree deletion.
+
+StudyMind:
+Uses your uploaded notes + textbooks + lecture transcripts
+to generate an accurate answer with context.
 ```
+
+---
+
+## 🗺️ Knowledge Graph
+
+Automatically discovers relationships between concepts.
+
+```text
+Data Structures
+      │
+      ├── Trees
+      │      │
+      │      ├── BST
+      │      ├── AVL
+      │      └── Heap
+      │
+      └── Graphs
+             │
+             ├── BFS
+             └── DFS
+```
+
+---
+
+## 🃏 AI Study Aids
+
+Generate in seconds:
+
+- Flashcards
+- MCQs
+- Short Questions
+- Long Questions
+- Revision Notes
+- Summaries
+
+---
+
+## 📈 Personalized Learning
+
+StudyMind continuously learns about **you**.
+
+It identifies:
+
+- Weak topics
+- Strong concepts
+- Learning patterns
+- Progress over time
+
+Then recommends exactly what to study next.
+
+---
+
+## 🧠 Long-Term Memory
+
+Unlike ordinary chatbots,
+
+StudyMind remembers:
+
+- Previous conversations
+- Your uploaded material
+- Earlier explanations
+- Learning progress
+
+Every conversation becomes smarter than the last.
+
+---
+
+# 🎯 Project Goals
+
+- Centralize learning resources
+- Understand content using AI
+- Build a Retrieval-Augmented Generation (RAG) pipeline
+- Generate intelligent study material
+- Track learning progress
+- Deliver personalized recommendations
+- Maintain conversational memory across sessions
+
+---
+
+# 🏗️ Project Architecture
+
+```text
+                        ┌────────────────────┐
+                        │     React UI       │
+                        └─────────┬──────────┘
+                                  │
+                            REST API
+                                  │
+                     ┌────────────▼────────────┐
+                     │      FastAPI Server     │
+                     └────────────┬────────────┘
+                                  │
+          ┌───────────────────────┼────────────────────────┐
+          │                       │                        │
+          ▼                       ▼                        ▼
+
+   Ingestion Engine        Vector Database          RAG Engine
+(PDF • YouTube • Web)   (Embeddings Search)      (LLM + Retrieval)
+
+          │                       │                        │
+          └───────────────┬───────┴────────────────────────┘
+                          ▼
+                  Personalized Memory
+```
+
+---
+
+# 📂 Repository Structure
+
+```text
 studymind-ai/
-├── web/          → Web Development Team (Team Pluto)
-│   ├── frontend/ → React app (upload UI, chat UI, dashboard)
-│   └── backend/  → FastAPI backend, auth, main API
 │
-├── ai-ml/        → AI/ML Team (Team Lambda)
-│   ├── ingestion/       → PDF/YouTube/article text extraction
-│   ├── embeddings/      → Vector database logic
-│   └── quiz-generator/  → Flashcard & quiz generation
+├── web/
+│   ├── frontend/
+│   └── backend/
 │
-├── chatbot/      → Chatbot Team (Team Mu)
-│   ├── rag-engine/  → Retrieval-Augmented Generation pipeline
-│   └── memory/       → Conversation memory across sessions
+├── ai-ml/
+│   ├── ingestion/
+│   ├── embeddings/
+│   └── quiz-generator/
 │
-└── docs/         → Shared documentation for all teams
-    ├── architecture.md    → How all modules connect
-    ├── api-contracts.md   → Data formats passed between modules
-    └── meeting-notes.md   → Team meeting notes
+├── chatbot/
+│   ├── rag-engine/
+│   └── memory/
+│
+└── docs/
+    ├── architecture.md
+    ├── api-contracts.md
+    └── meeting-notes.md
 ```
 
-## 👥 Teams & Responsibilities
+---
 
-| Team | Folder | Responsibility |
-|------|--------|-----------------|
-| **Team Pluto** | `web/` | Frontend UI, backend API, authentication, dashboard |
-| **Team Lambda** | `ai-ml/` | Content ingestion, embeddings, vector search, quiz generation |
-| **Team Mu** | `chatbot/` | RAG-based Q&A engine, conversation memory |
+# 👥 Teams
 
-**Important rule:** Each team works **only** inside their assigned folder. Cross-team communication about data formats happens through `docs/api-contracts.md`, not by editing each other's code directly.
+| Team | Directory | Responsibilities |
+|-------|-----------|------------------|
+| 🌍 Team Pluto | `web/` | Frontend, Backend API, Authentication, Dashboard |
+| 🤖 Team Lambda | `ai-ml/` | OCR, Embeddings, Vector Search, Quiz Generator |
+| 🧠 Team Mu | `chatbot/` | RAG Pipeline, AI Chat, Memory |
 
-## 🌱 Development Approach
-This project is being built step by step, starting with small, simple tasks and gradually increasing in complexity as the team grows. Early tasks focus on getting the basic plumbing working (e.g., a working frontend-backend connection, basic text extraction, a simple LLM call) before adding intelligence and advanced features.
+---
 
-## 🔀 Git Workflow
-- `main` branch is always stable — no one pushes directly to it
-- Every task is done in its own branch, named like `team/task-name` (e.g. `web/upload-ui`, `ai-ml/pdf-parser`)
-- Work is submitted via Pull Request and reviewed before merging
-- Branch protection is enabled on `main` to enforce this
+# 🤝 Collaboration Rules
 
-## 🛠️ Tech Stack (proposed)
-- **Frontend:** React + Vite + Tailwind
-- **Backend:** FastAPI (Python)
-- **Database:** MongoDB / PostgreSQL
-- **Vector Database:** ChromaDB / Qdrant
-- **LLM:** Anthropic / OpenAI API
-- **OCR:** Tesseract / PyMuPDF
-- **YouTube Transcripts:** youtube-transcript-api / Whisper
+✔ Work only inside your assigned folder.
 
-## 🚀 Getting Started
-Setup instructions will be added here as each module becomes functional.
+✔ Communicate through API contracts.
 
+✔ Never modify another team's code directly.
 
+✔ Keep pull requests small and focused.
+
+---
+
+# 🌱 Development Philosophy
+
+StudyMind AI is built **incrementally**.
+
+Every feature starts simple and evolves over time.
+
+```
+Foundation
+      ↓
+Upload Files
+      ↓
+Extract Text
+      ↓
+Embeddings
+      ↓
+RAG Chat
+      ↓
+Knowledge Graph
+      ↓
+Flashcards
+      ↓
+Personal Memory
+      ↓
+Learning Recommendations
+```
+
+---
+
+# 🌳 Git Workflow
+
+```text
+main
+ │
+ ├── web/upload-ui
+ │
+ ├── web/auth
+ │
+ ├── ai/pdf-parser
+ │
+ ├── ai/embeddings
+ │
+ ├── chatbot/rag
+ │
+ └── chatbot/memory
+```
+
+### Rules
+
+- 🚫 Never push directly to `main`
+- 🌿 Create a feature branch
+- 📤 Open a Pull Request
+- 👀 Request Review
+- ✅ Merge after approval
+
+---
+
+# 🛠️ Tech Stack
+
+| Layer | Technology |
+|--------|------------|
+| Frontend | React + Vite + TailwindCSS |
+| Backend | FastAPI |
+| Database | MongoDB / PostgreSQL |
+| Vector DB | ChromaDB / Qdrant |
+| AI Models | OpenAI / Anthropic |
+| OCR | PyMuPDF / Tesseract |
+| YouTube | youtube-transcript-api / Whisper |
+| Embeddings | OpenAI / Sentence Transformers |
+
+---
+
+# 🚀 Future Roadmap
+
+- [ ] PDF Upload
+- [ ] YouTube Import
+- [ ] Web Article Import
+- [ ] Semantic Search
+- [ ] AI Chatbot
+- [ ] Flashcards
+- [ ] Quiz Generator
+- [ ] Knowledge Graph
+- [ ] Personalized Study Planner
+- [ ] Mobile Application
+
+---
+
+# ❤️ Why StudyMind AI?
+
+Most AI tools answer questions.
+
+**StudyMind AI helps you learn.**
+
+It understands your material, remembers your progress, identifies your weaknesses, and grows with you—becoming a true AI learning companion.
+
+---
+
+<div align="center">
+
+## ⭐ If you like this project, give it a star!
+
+**Made with ❤️, ☕**
+
+</div>
