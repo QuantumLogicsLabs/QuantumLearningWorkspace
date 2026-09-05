@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import ProfileView from "./ProfileView.jsx";
@@ -704,6 +704,76 @@ function FormattedChatMessage({ content }) {
   return <div className="chat-formatted-body">{elements}</div>;
 }
 
+// ─── Custom Scope Dropdown (Scrollable 3-4 visible items) ───────────────────
+
+function ScopeDropdown({ targetDocument, setTargetDocument, files }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedLabel = targetDocument || "All Documents";
+
+  return (
+    <div className="custom-scope-dropdown" ref={dropdownRef}>
+      <button
+        type="button"
+        className="scope-dropdown-trigger"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span className="scope-dropdown-label">{selectedLabel}</span>
+        <span className={`scope-dropdown-arrow ${isOpen ? "open" : ""}`}>▾</span>
+      </button>
+
+      {isOpen && (
+        <div className="scope-dropdown-menu">
+          <div
+            className={`scope-dropdown-item ${!targetDocument ? "selected" : ""}`}
+            onClick={() => {
+              setTargetDocument(null);
+              setIsOpen(false);
+            }}
+          >
+            <span className="scope-doc-name">All Documents</span>
+            <span className="scope-doc-badge">🌐 Global</span>
+          </div>
+          {files.map((file) => {
+            const isProcessing = (file.status || "").toLowerCase() === "processing";
+            const isSelected = targetDocument === file.filename;
+            return (
+              <div
+                key={file.id}
+                className={`scope-dropdown-item ${isSelected ? "selected" : ""} ${
+                  isProcessing ? "disabled" : ""
+                }`}
+                onClick={() => {
+                  if (!isProcessing) {
+                    setTargetDocument(file.filename);
+                    setIsOpen(false);
+                  }
+                }}
+              >
+                <span className="scope-doc-name">{file.filename}</span>
+                <span className="scope-doc-badge">
+                  {isProcessing ? "⏳ Processing" : "✓ Ready"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ChatView({ targetDocument, setTargetDocument }) {
   const { token, userEmail, handle401 } = useAuth();
   const [files, setFiles] = useState([]);
@@ -919,21 +989,11 @@ function ChatView({ targetDocument, setTargetDocument }) {
       <div className="chat-header-bar">
         <div className="chat-doc-selector-container">
           <span className="selector-icon">🎯 Scope:</span>
-          <select
-            value={targetDocument || ""}
-            onChange={(e) => setTargetDocument(e.target.value || null)}
-            className="chat-doc-select"
-          >
-            <option value="">All Documents</option>
-            {files.map((file) => {
-              const isProcessing = (file.status || "").toLowerCase() === "processing";
-              return (
-                <option key={file.id} value={file.filename} disabled={isProcessing}>
-                  {file.filename} {isProcessing ? "⏳ (Processing - Not Searchable)" : "✓ (Ready)"}
-                </option>
-              );
-            })}
-          </select>
+          <ScopeDropdown
+            targetDocument={targetDocument}
+            setTargetDocument={setTargetDocument}
+            files={files}
+          />
           {targetDocument && (
             <button
               className="btn-clear-target-doc"
