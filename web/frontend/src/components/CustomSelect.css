@@ -61,7 +61,7 @@
   top: calc(100% + 5px);
   left: 0;
   min-width: 100%;
-  max-width: min(320px, calc(100vw - 48px));
+  max-width: min(320px, calc(100vw - 32px));
   max-height: 155px; /* Exactly 3-4 items visible! */
   overflow-y: auto;  /* Smooth scroll for remaining items */
   background: var(--color-card-bg, #141226);
@@ -70,6 +70,7 @@
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.55);
   z-index: 1000;
   padding: 4px;
+  box-sizing: border-box;
   animation: dropdownFade 0.15s ease;
 }
 
