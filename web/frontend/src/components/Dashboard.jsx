@@ -594,6 +594,116 @@ function DocumentsView({ onAskAboutDocument, onNavigate }) {
   );
 }
 
+// ─── Formatted Chat Message Component ───────────────────────────────────────
+
+function FormattedChatMessage({ content }) {
+  if (!content) return null;
+
+  // Remove ugly inline chunk tags like (source `2cae..._chunk0`)
+  // because sources are cleanly displayed in the bottom chip list
+  const cleaned = content.replace(/\s*\(\s*source\s*`?[a-zA-Z0-9\-_]+(?:_chunk\d+)?`?\s*\)/gi, "").trim();
+
+  const lines = cleaned.split("\n");
+  const elements = [];
+
+  const parseInline = (text, keyPrefix) => {
+    if (!text) return "";
+    const regex = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+      const token = match[0];
+      if (token.startsWith("**") && token.endsWith("**")) {
+        parts.push(
+          <strong key={`${keyPrefix}-b-${match.index}`} className="chat-strong">
+            {token.slice(2, -2)}
+          </strong>
+        );
+      } else if (token.startsWith("`") && token.endsWith("`")) {
+        parts.push(
+          <code key={`${keyPrefix}-c-${match.index}`} className="chat-code">
+            {token.slice(1, -1)}
+          </code>
+        );
+      }
+      lastIndex = regex.lastIndex;
+    }
+
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+
+    return parts.length > 0 ? parts : text;
+  };
+
+  lines.forEach((line, idx) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      elements.push(<div key={`gap-${idx}`} className="chat-line-gap" />);
+      return;
+    }
+
+    // Numbered list item: e.g. "1. **Desktop** - ..."
+    const numMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+    if (numMatch) {
+      elements.push(
+        <div key={`num-${idx}`} className="chat-list-row chat-num-row">
+          <span className="chat-num-badge">{numMatch[1]}</span>
+          <span className="chat-list-text">{parseInline(numMatch[2], `num-${idx}`)}</span>
+        </div>
+      );
+      return;
+    }
+
+    // Bullet item: e.g. "- **Hardware** - ..." or "* item"
+    const bulletMatch = trimmed.match(/^[-*•]\s+(.*)$/);
+    if (bulletMatch) {
+      elements.push(
+        <div key={`bullet-${idx}`} className="chat-list-row chat-bullet-row">
+          <span className="chat-bullet-dot">▸</span>
+          <span className="chat-list-text">{parseInline(bulletMatch[1], `bullet-${idx}`)}</span>
+        </div>
+      );
+      return;
+    }
+
+    // Heading markdown: "### Title"
+    const headingMatch = trimmed.match(/^#{1,4}\s+(.*)$/);
+    if (headingMatch) {
+      elements.push(
+        <h4 key={`head-${idx}`} className="chat-heading-item">
+          {parseInline(headingMatch[1], `head-${idx}`)}
+        </h4>
+      );
+      return;
+    }
+
+    // Standalone bold title line: e.g. "**Computer - Overview**"
+    if (trimmed.startsWith("**") && trimmed.endsWith("**") && trimmed.length > 4 && !trimmed.slice(2, -2).includes("**")) {
+      elements.push(
+        <h4 key={`bhead-${idx}`} className="chat-heading-item">
+          {trimmed.slice(2, -2)}
+        </h4>
+      );
+      return;
+    }
+
+    // Standard paragraph
+    elements.push(
+      <p key={`p-${idx}`} className="chat-paragraph">
+        {parseInline(trimmed, `p-${idx}`)}
+      </p>
+    );
+  });
+
+  return <div className="chat-formatted-body">{elements}</div>;
+}
+
 function ChatView({ targetDocument, setTargetDocument }) {
   const { token, userEmail, handle401 } = useAuth();
   const [files, setFiles] = useState([]);
@@ -860,7 +970,9 @@ function ChatView({ targetDocument, setTargetDocument }) {
                   msg.role === "user" ? "bubble-user" : "bubble-ai"
                 } ${msg.isError ? "bubble-error" : ""}`}
               >
-                <div className="msg-content">{msg.content}</div>
+                <div className="msg-content">
+                  {msg.role === "user" ? msg.content : <FormattedChatMessage content={msg.content} />}
+                </div>
 
                 {msg.isError && (
                   <div style={{ marginTop: "10px", paddingTop: "8px", borderTop: "1px solid rgba(239, 68, 68, 0.25)" }}>
