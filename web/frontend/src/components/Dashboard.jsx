@@ -25,7 +25,7 @@ function SidebarNav({ activeTab, setActiveTab, onRequestLogout }) {
     { id: "quiz", icon: "🎯", label: "Quiz" },
     { id: "results", icon: "📊", label: "Results" },
     { id: "roadmap", icon: "🗺️", label: "Study Roadmap" },
-    { id: "graph", icon: "🕸️", label: "Knowledge Graph" },
+    { id: "graph", icon: "🌐", label: "Knowledge Graph" },
   ];
 
   return (
@@ -954,7 +954,7 @@ function GraphView() {
   return (
     <div className="graph-view">
       <div className="graph-placeholder">
-        <span className="graph-icon">🗺️</span>
+        <span className="graph-icon">🌐</span>
         <h3 className="graph-title">Knowledge Graph</h3>
         <p className="graph-desc">
           Visualize connections between concepts extracted from your study materials.
