@@ -720,8 +720,8 @@
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  min-width: 290px;
-  max-width: 380px;
+  min-width: 260px;
+  max-width: min(340px, calc(100vw - 48px));
   max-height: 155px; /* Exactly 3 to 4 items visible! */
   overflow-y: auto;  /* Smooth scroll for remaining items */
   background: #141226;
@@ -743,15 +743,15 @@
 }
 
 .scope-dropdown-item {
-  padding: 8px 12px;
+  padding: 8px 10px;
   border-radius: 6px;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: #e2e8f0;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   transition: background 0.15s, color 0.15s;
 }
 
@@ -776,12 +776,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 1;
+  min-width: 0;
 }
 
 .scope-doc-badge {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--color-text-muted, #94a3b8);
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .btn-clear-target-doc {
