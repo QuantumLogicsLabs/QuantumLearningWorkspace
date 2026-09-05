@@ -23,7 +23,7 @@ from auth_utils import get_current_user_email
 logger = logging.getLogger("uvicorn")
 router = APIRouter()
 
-QUIZ_SERVICE_URL = os.getenv("QUIZ_SERVICE_URL", "http://127.0.0.1:8002")
+QUIZ_SERVICE_URL = os.getenv("QUIZ_SERVICE_URL", "http://localhost:8002")
 
 
 # ---------------- Generate Quiz Proxy ----------------
@@ -52,9 +52,10 @@ async def generate_quiz_proxy(
         except Exception:
             pass
 
-    # Ensure internal token is attached for the AI Quiz Generator service
+    # Forward the ORIGINAL user JWT to Lambda so it filters ChromaDB by the real user_id.
+    # Do NOT create a new token — that would send user_id="anonymous" if decode failed.
     forward_headers = {
-        "Authorization": f"Bearer {create_access_token(user_id)}"
+        "Authorization": auth_header  # Pass through original "Bearer <token>" as-is
     }
 
     quiz_type_map = {
@@ -77,8 +78,12 @@ async def generate_quiz_proxy(
     target_url = f"{QUIZ_SERVICE_URL.rstrip('/')}/generate-quiz"
     payload = {
         "topic": body.topic.strip(),
+        "text": body.topic.strip(),
         "question_count": body.question_count,
+        "number_of_questions": body.question_count,
         "quiz_type": mapped_quiz_type,
+        "question_type": mapped_quiz_type,
+        "difficulty": "medium",
     }
 
     try:
@@ -102,6 +107,52 @@ async def generate_quiz_proxy(
 
             raw_questions = data.get("questions", [])
             raw_answers = data.get("answers", [])
+
+            # ── Topic Relevance Check ──────────────────────────────────────────
+            # Reject if the questions are completely unrelated to the requested topic.
+            # This prevents generating quizzes for non-existent/gibberish topics (e.g. 'phjd', 'xyz')
+            # from irrelevant documents.
+            import re
+            topic_clean = body.topic.strip().lower()
+            stop_words = {"the", "and", "for", "with", "from", "that", "this", "about", "what", "which", "into", "your", "their", "have", "some", "intro", "introduction"}
+            topic_words = [w for w in re.findall(r"\w+", topic_clean) if w not in stop_words and len(w) >= 2]
+            if not topic_words:
+                topic_words = [topic_clean]
+
+            if raw_questions:
+                # Combine ALL question text + options + explanations for searching
+                all_text = " ".join(
+                    (
+                        (q.get("question") or "")
+                        + " "
+                        + " ".join(q.get("options") or [])
+                    ).lower()
+                    for q in raw_questions
+                )
+                all_answers_text = " ".join(
+                    (
+                        (a.get("answer") or "")
+                        + " "
+                        + (a.get("explanation") or "")
+                    ).lower()
+                    for a in raw_answers
+                )
+                combined_text = all_text + " " + all_answers_text
+
+                # At least ONE meaningful topic word must appear in the questions/options/answers
+                relevance_found = any(word in combined_text for word in topic_words)
+                logger.info(f"Topic check: topic='{body.topic}', words={topic_words}, relevance_found={relevance_found}")
+
+                if not relevance_found:
+                    logger.warning(f"Rejecting quiz: topic '{body.topic}' not found in generated content")
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"No content about '{body.topic}' was found in your uploaded documents. "
+                            f"Please enter a topic from your uploaded materials or upload a document covering '{body.topic}'."
+                        ),
+                    )
+            # ──────────────────────────────────────────────────────────────────
 
             # Generate a secure session ID for grading
             quiz_id = str(uuid.uuid4())

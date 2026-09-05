@@ -199,7 +199,11 @@ export default function QuizResultsView() {
                   <div className="result-info">
                     <h3 className="result-topic">{group.topic}</h3>
                     <p className="result-date">
-                      {new Date(group.date).toLocaleDateString("en-US", {
+                      {new Date(
+                        group.date && !group.date.endsWith("Z") && !group.date.includes("+")
+                          ? group.date + "Z"
+                          : group.date
+                      ).toLocaleString("en-US", {
                         month: "short",
                         day: "numeric",
                         year: "numeric",

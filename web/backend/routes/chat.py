@@ -16,7 +16,7 @@ load_dotenv()
 logger = logging.getLogger("uvicorn")
 router = APIRouter()
 
-CHATBOT_SERVICE_URL = os.getenv("CHATBOT_SERVICE_URL", "http://127.0.0.1:8000")
+CHATBOT_SERVICE_URL = os.getenv("CHATBOT_SERVICE_URL", "http://localhost:8000")
 
 
 class HistoryItem(BaseModel):
