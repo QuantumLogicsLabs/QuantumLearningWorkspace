@@ -11,6 +11,7 @@ import LogoutModal from "./LogoutModal.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
 import "./Dashboard.css";
 import DocumentPreviewModal from "./DocumentPreviewModal.jsx";
+import CustomSelect from "./CustomSelect.jsx";
 
 // ─── Sub-Components ──────────────────────────────────────────────────────────
 
@@ -397,24 +398,26 @@ function DocumentsView({ onAskAboutDocument, onNavigate }) {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
 
-          <select
+          <CustomSelect
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="All">All</option>
-            <option value="Processing">Processing</option>
-            <option value="Ready">Ready</option>
-          </select>
+            onChange={setStatusFilter}
+            options={[
+              { value: "All", label: "All Status" },
+              { value: "Processing", label: "⏳ Processing" },
+              { value: "Ready", label: "✓ Ready" },
+            ]}
+          />
 
-          <select
+          <CustomSelect
             value={sortOption}
-            onChange={(e) => setSortOption(e.target.value)}
-          >
-            <option value="Newest">Newest First</option>
-            <option value="Oldest">Oldest First</option>
-            <option value="A-Z">A-Z</option>
-            <option value="Z-A">Z-A</option>
-          </select>
+            onChange={setSortOption}
+            options={[
+              { value: "Newest", label: "Newest First" },
+              { value: "Oldest", label: "Oldest First" },
+              { value: "A-Z", label: "A-Z" },
+              { value: "Z-A", label: "Z-A" },
+            ]}
+          />
         </div>
 
         {loading && (
