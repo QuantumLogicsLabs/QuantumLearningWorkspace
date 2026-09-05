@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import ProfileView from "./ProfileView.jsx";
@@ -11,6 +11,7 @@ import LogoutModal from "./LogoutModal.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
 import "./Dashboard.css";
 import DocumentPreviewModal from "./DocumentPreviewModal.jsx";
+import CustomSelect from "./CustomSelect.jsx";
 
 // ─── Sub-Components ──────────────────────────────────────────────────────────
 
@@ -397,24 +398,26 @@ function DocumentsView({ onAskAboutDocument, onNavigate }) {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
 
-          <select
+          <CustomSelect
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="All">All</option>
-            <option value="Processing">Processing</option>
-            <option value="Ready">Ready</option>
-          </select>
+            onChange={setStatusFilter}
+            options={[
+              { value: "All", label: "All Status" },
+              { value: "Processing", label: "⏳ Processing" },
+              { value: "Ready", label: "✓ Ready" },
+            ]}
+          />
 
-          <select
+          <CustomSelect
             value={sortOption}
-            onChange={(e) => setSortOption(e.target.value)}
-          >
-            <option value="Newest">Newest First</option>
-            <option value="Oldest">Oldest First</option>
-            <option value="A-Z">A-Z</option>
-            <option value="Z-A">Z-A</option>
-          </select>
+            onChange={setSortOption}
+            options={[
+              { value: "Newest", label: "Newest First" },
+              { value: "Oldest", label: "Oldest First" },
+              { value: "A-Z", label: "A-Z" },
+              { value: "Z-A", label: "Z-A" },
+            ]}
+          />
         </div>
 
         {loading && (
@@ -589,6 +592,186 @@ function DocumentsView({ onAskAboutDocument, onNavigate }) {
           uploadId={previewId}
           onClose={() => setPreviewId(null)}
         />
+      )}
+    </div>
+  );
+}
+
+// ─── Formatted Chat Message Component ───────────────────────────────────────
+
+function FormattedChatMessage({ content }) {
+  if (!content) return null;
+
+  // Remove ugly inline chunk tags like (source `2cae..._chunk0`)
+  // because sources are cleanly displayed in the bottom chip list
+  const cleaned = content.replace(/\s*\(\s*source\s*`?[a-zA-Z0-9\-_]+(?:_chunk\d+)?`?\s*\)/gi, "").trim();
+
+  const lines = cleaned.split("\n");
+  const elements = [];
+
+  const parseInline = (text, keyPrefix) => {
+    if (!text) return "";
+    const regex = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+      const token = match[0];
+      if (token.startsWith("**") && token.endsWith("**")) {
+        parts.push(
+          <strong key={`${keyPrefix}-b-${match.index}`} className="chat-strong">
+            {token.slice(2, -2)}
+          </strong>
+        );
+      } else if (token.startsWith("`") && token.endsWith("`")) {
+        parts.push(
+          <code key={`${keyPrefix}-c-${match.index}`} className="chat-code">
+            {token.slice(1, -1)}
+          </code>
+        );
+      }
+      lastIndex = regex.lastIndex;
+    }
+
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+
+    return parts.length > 0 ? parts : text;
+  };
+
+  lines.forEach((line, idx) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      elements.push(<div key={`gap-${idx}`} className="chat-line-gap" />);
+      return;
+    }
+
+    // Numbered list item: e.g. "1. **Desktop** - ..."
+    const numMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+    if (numMatch) {
+      elements.push(
+        <div key={`num-${idx}`} className="chat-list-row chat-num-row">
+          <span className="chat-num-badge">{numMatch[1]}</span>
+          <span className="chat-list-text">{parseInline(numMatch[2], `num-${idx}`)}</span>
+        </div>
+      );
+      return;
+    }
+
+    // Bullet item: e.g. "- **Hardware** - ..." or "* item"
+    const bulletMatch = trimmed.match(/^[-*•]\s+(.*)$/);
+    if (bulletMatch) {
+      elements.push(
+        <div key={`bullet-${idx}`} className="chat-list-row chat-bullet-row">
+          <span className="chat-bullet-dot">▸</span>
+          <span className="chat-list-text">{parseInline(bulletMatch[1], `bullet-${idx}`)}</span>
+        </div>
+      );
+      return;
+    }
+
+    // Heading markdown: "### Title"
+    const headingMatch = trimmed.match(/^#{1,4}\s+(.*)$/);
+    if (headingMatch) {
+      elements.push(
+        <h4 key={`head-${idx}`} className="chat-heading-item">
+          {parseInline(headingMatch[1], `head-${idx}`)}
+        </h4>
+      );
+      return;
+    }
+
+    // Standalone bold title line: e.g. "**Computer - Overview**"
+    if (trimmed.startsWith("**") && trimmed.endsWith("**") && trimmed.length > 4 && !trimmed.slice(2, -2).includes("**")) {
+      elements.push(
+        <h4 key={`bhead-${idx}`} className="chat-heading-item">
+          {trimmed.slice(2, -2)}
+        </h4>
+      );
+      return;
+    }
+
+    // Standard paragraph
+    elements.push(
+      <p key={`p-${idx}`} className="chat-paragraph">
+        {parseInline(trimmed, `p-${idx}`)}
+      </p>
+    );
+  });
+
+  return <div className="chat-formatted-body">{elements}</div>;
+}
+
+// ─── Custom Scope Dropdown (Scrollable 3-4 visible items) ───────────────────
+
+function ScopeDropdown({ targetDocument, setTargetDocument, files }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedLabel = targetDocument || "All Documents";
+
+  return (
+    <div className="custom-scope-dropdown" ref={dropdownRef}>
+      <button
+        type="button"
+        className="scope-dropdown-trigger"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span className="scope-dropdown-label">{selectedLabel}</span>
+        <span className={`scope-dropdown-arrow ${isOpen ? "open" : ""}`}>▾</span>
+      </button>
+
+      {isOpen && (
+        <div className="scope-dropdown-menu">
+          <div
+            className={`scope-dropdown-item ${!targetDocument ? "selected" : ""}`}
+            onClick={() => {
+              setTargetDocument(null);
+              setIsOpen(false);
+            }}
+          >
+            <span className="scope-doc-name">All Documents</span>
+            <span className="scope-doc-badge">🌐 Global</span>
+          </div>
+          {files.map((file) => {
+            const isProcessing = (file.status || "").toLowerCase() === "processing";
+            const isSelected = targetDocument === file.filename;
+            return (
+              <div
+                key={file.id}
+                className={`scope-dropdown-item ${isSelected ? "selected" : ""} ${
+                  isProcessing ? "disabled" : ""
+                }`}
+                onClick={() => {
+                  if (!isProcessing) {
+                    setTargetDocument(file.filename);
+                    setIsOpen(false);
+                  }
+                }}
+              >
+                <span className="scope-doc-name">{file.filename}</span>
+                <span className="scope-doc-badge">
+                  {isProcessing ? "⏳ Processing" : "✓ Ready"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
@@ -809,21 +992,11 @@ function ChatView({ targetDocument, setTargetDocument }) {
       <div className="chat-header-bar">
         <div className="chat-doc-selector-container">
           <span className="selector-icon">🎯 Scope:</span>
-          <select
-            value={targetDocument || ""}
-            onChange={(e) => setTargetDocument(e.target.value || null)}
-            className="chat-doc-select"
-          >
-            <option value="">All Documents</option>
-            {files.map((file) => {
-              const isProcessing = (file.status || "").toLowerCase() === "processing";
-              return (
-                <option key={file.id} value={file.filename} disabled={isProcessing}>
-                  {file.filename} {isProcessing ? "⏳ (Processing - Not Searchable)" : "✓ (Ready)"}
-                </option>
-              );
-            })}
-          </select>
+          <ScopeDropdown
+            targetDocument={targetDocument}
+            setTargetDocument={setTargetDocument}
+            files={files}
+          />
           {targetDocument && (
             <button
               className="btn-clear-target-doc"
@@ -860,7 +1033,9 @@ function ChatView({ targetDocument, setTargetDocument }) {
                   msg.role === "user" ? "bubble-user" : "bubble-ai"
                 } ${msg.isError ? "bubble-error" : ""}`}
               >
-                <div className="msg-content">{msg.content}</div>
+                <div className="msg-content">
+                  {msg.role === "user" ? msg.content : <FormattedChatMessage content={msg.content} />}
+                </div>
 
                 {msg.isError && (
                   <div style={{ marginTop: "10px", paddingTop: "8px", borderTop: "1px solid rgba(239, 68, 68, 0.25)" }}>

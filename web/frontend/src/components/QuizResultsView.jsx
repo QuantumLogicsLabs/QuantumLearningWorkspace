@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import "./QuizResultsView.css";
+import CustomSelect from "./CustomSelect.jsx";
 
 export default function QuizResultsView() {
   const { token, handle401 } = useAuth();
@@ -167,17 +168,11 @@ export default function QuizResultsView() {
       <div className="results-controls">
         <div className="filter-group">
           <label className="filter-label">Filter by Topic:</label>
-          <select
+          <CustomSelect
             value={filterTopic}
-            onChange={(e) => setFilterTopic(e.target.value)}
-            className="filter-select"
-          >
-            {topics.map((topic) => (
-              <option key={topic} value={topic}>
-                {topic}
-              </option>
-            ))}
-          </select>
+            onChange={setFilterTopic}
+            options={topics}
+          />
         </div>
       </div>
 
