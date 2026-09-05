@@ -1,9 +1,11 @@
 import os
 import uuid
 import json
+import logging
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 
+from groq import AsyncGroq
 from fastapi import APIRouter, HTTPException, Depends, Header, status
 from auth_utils import get_current_user_email
 import database
@@ -198,6 +200,103 @@ def _generate_synthetic_cards(topic: str, count: int, difficulty: str, content: 
 
     return cards[:count]
 
+logger = logging.getLogger("uvicorn")
+
+
+async def _generate_groq_flashcards(
+    topic: str,
+    count: int = 5,
+    difficulty: str = "medium",
+    content: Optional[str] = None,
+) -> List[Flashcard]:
+    """
+    Generate dynamic, intelligent, topic-specific flashcards via Groq LLM.
+    Returns a list of Flashcard objects.
+    """
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        return []
+
+    model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+    client = AsyncGroq(api_key=api_key, timeout=25.0)
+
+    prompt_content = ""
+    if content and content.strip():
+        prompt_content = f"\nUse this reference text as the primary source:\n{content.strip()[:2500]}\n"
+
+    prompt = f"""You are an expert academic tutor. Generate exactly {count} distinct, high-quality study flashcards for the topic: "{topic}".
+Difficulty level: {difficulty}.
+{prompt_content}
+Rules:
+- Each flashcard must test a concrete, important fact, concept, definition, mechanism, or principle specifically about "{topic}".
+- Do NOT use generic template phrasing (e.g. "What is the primary definition and scope of...").
+- Make questions engaging and specific to "{topic}".
+- Provide a clear, accurate, and educational answer (1-3 sentences) for each question.
+- Return ONLY a valid JSON array of objects with keys "front" and "back". No markdown backticks, no introduction, no outro.
+
+Format:
+[
+  {{
+    "front": "Specific question about {topic}",
+    "back": "Accurate, concise explanation"
+  }}
+]"""
+
+    try:
+        response = await client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.4,
+            max_tokens=1500,
+        )
+        raw_text = response.choices[0].message.content.strip()
+
+        cleaned = raw_text
+        if "```" in cleaned:
+            parts = cleaned.split("```")
+            for p in parts:
+                p_str = p.strip()
+                if p_str.startswith("json"):
+                    p_str = p_str[4:].strip()
+                if p_str.startswith("[") and p_str.endswith("]"):
+                    cleaned = p_str
+                    break
+
+        cleaned = cleaned.strip()
+        if not cleaned.startswith("["):
+            start = cleaned.find("[")
+            end = cleaned.rfind("]")
+            if start != -1 and end != -1:
+                cleaned = cleaned[start : end + 1]
+
+        data = json.loads(cleaned)
+        if not isinstance(data, list):
+            return []
+
+        cards: List[Flashcard] = []
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            front = str(item.get("front") or item.get("question") or "").strip()
+            back = str(item.get("back") or item.get("answer") or "").strip()
+            if front and back:
+                card_id = str(uuid.uuid4())
+                cards.append(
+                    Flashcard(
+                        id=card_id,
+                        front=front,
+                        back=back,
+                        question=front,
+                        answer=back,
+                        topic=topic,
+                        difficulty=difficulty,
+                    )
+                )
+        return cards[:count]
+    except Exception as e:
+        logger.warning(f"Groq flashcards generation encountered an error: {e}")
+        return []
+
 # ==========================================
 # Endpoints
 # ==========================================
@@ -221,19 +320,51 @@ async def generate_flashcards(
     num_cards = request.num_cards or 5
     num_cards = max(1, min(num_cards, 20))
     difficulty = request.difficulty or "medium"
+    topic_cleaned = request.topic.strip()
 
-    cards = _generate_synthetic_cards(
-        topic=request.topic.strip(),
-        count=num_cards,
-        difficulty=difficulty,
-        content=request.content,
-    )
+    # If structured key-value notes content is provided (e.g. "Term: Definition"), extract directly
+    if request.content and ":" in request.content:
+        synthetic = _generate_synthetic_cards(
+            topic=topic_cleaned,
+            count=num_cards,
+            difficulty=difficulty,
+            content=request.content,
+        )
+        if len(synthetic) >= num_cards:
+            return GenerateFlashcardsResponse(
+                success=True,
+                topic=topic_cleaned,
+                total_cards=len(synthetic),
+                cards=synthetic[:num_cards],
+            )
+
+    # Generate dynamic cards via Groq LLM
+    cards: List[Flashcard] = []
+    try:
+        cards = await _generate_groq_flashcards(
+            topic=topic_cleaned,
+            count=num_cards,
+            difficulty=difficulty,
+            content=request.content,
+        )
+    except Exception as exc:
+        logger.warning(f"Groq flashcard generation exception: {exc}")
+
+    # Fallback to domain KB / heuristics if Groq returns insufficient cards or is offline
+    if len(cards) < num_cards:
+        fallback = _generate_synthetic_cards(
+            topic=topic_cleaned,
+            count=num_cards - len(cards),
+            difficulty=difficulty,
+            content=request.content,
+        )
+        cards.extend(fallback)
 
     return GenerateFlashcardsResponse(
         success=True,
-        topic=request.topic.strip(),
-        total_cards=len(cards),
-        cards=cards,
+        topic=topic_cleaned,
+        total_cards=len(cards[:num_cards]),
+        cards=cards[:num_cards],
     )
 
 @router.post("/flashcards/review")
