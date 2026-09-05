@@ -6,6 +6,7 @@ import QuizView from "./QuizView.jsx";
 import QuizResultsView from "./QuizResultsView.jsx";
 import FlashcardsView from "./FlashcardsView.jsx";
 import RecommendedNextSteps from "./RecommendedNextSteps.jsx";
+import StudyRoadmapView from "./StudyRoadmapView.jsx";
 import LogoutModal from "./LogoutModal.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
 import "./Dashboard.css";
@@ -23,7 +24,8 @@ function SidebarNav({ activeTab, setActiveTab, onRequestLogout }) {
     { id: "flashcards", icon: "🎴", label: "Flashcards" },
     { id: "quiz", icon: "🎯", label: "Quiz" },
     { id: "results", icon: "📊", label: "Results" },
-    { id: "graph", icon: "🗺️", label: "Knowledge Graph" },
+    { id: "roadmap", icon: "🗺️", label: "Study Roadmap" },
+    { id: "graph", icon: "🌐", label: "Knowledge Graph" },
   ];
 
   return (
@@ -103,6 +105,10 @@ function TopBar({ activeTab }) {
     results: {
       title: "Quiz Results",
       subtitle: "View your quiz history and track your progress",
+    },
+    roadmap: {
+      title: "Study Roadmap",
+      subtitle: "Your personalised learning path based on your quiz results and study materials",
     },
     graph: {
       title: "Knowledge Graph",
@@ -948,7 +954,7 @@ function GraphView() {
   return (
     <div className="graph-view">
       <div className="graph-placeholder">
-        <span className="graph-icon">🗺️</span>
+        <span className="graph-icon">🌐</span>
         <h3 className="graph-title">Knowledge Graph</h3>
         <p className="graph-desc">
           Visualize connections between concepts extracted from your study materials.
@@ -1003,6 +1009,9 @@ export default function Dashboard() {
           {activeTab === "flashcards" && <FlashcardsView />}
           {activeTab === "quiz" && <QuizView />}
           {activeTab === "results" && <QuizResultsView />}
+          {activeTab === "roadmap" && (
+            <StudyRoadmapView onNavigate={setActiveTab} />
+          )}
           {activeTab === "graph" && <GraphView />}
           {(activeTab === "profile" || activeTab === "settings") && (
             <ProfileView onRequestLogout={() => setShowLogoutModal(true)} />
