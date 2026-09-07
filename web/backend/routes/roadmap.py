@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["roadmap"])
 
-ROADMAP_SERVICE_URL = os.getenv("ROADMAP_SERVICE_URL", "http://127.0.0.1:8004")
+ROADMAP_SERVICE_URL = os.getenv("ROADMAP_SERVICE_URL", "http://localhost:8004")
 
 # Curated high-yield fallback steps
 DEFAULT_CURATED_STEPS: List[Dict[str, Any]] = [
