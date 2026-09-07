@@ -1,0 +1,132 @@
+.graph-view {
+  padding: 1rem 0;
+}
+
+.graph-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.graph-title {
+  color: var(--color-text-primary, #fff);
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.graph-subtitle {
+  color: var(--color-text-secondary, #9ca3af);
+  font-size: 0.9rem;
+}
+
+.graph-refresh-btn {
+  background: var(--color-card-bg, #16162a);
+  border: 1px solid var(--color-input-border, #2a2a3e);
+  color: var(--color-text-secondary, #9ca3af);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md, 0.5rem);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.graph-refresh-btn:hover {
+  border-color: var(--color-primary-purple, #7c3aed);
+  color: var(--color-text-primary, #fff);
+}
+
+.graph-status-msg,
+.graph-empty-state,
+.graph-error-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--color-text-secondary, #9ca3af);
+}
+
+.graph-empty-icon {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.graph-empty-title {
+  color: var(--color-text-primary, #fff);
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.graph-empty-subtitle {
+  font-size: 0.85rem;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.graph-error-state button {
+  margin-top: 1rem;
+  background: var(--color-primary-purple, #7c3aed);
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1.2rem;
+  border-radius: var(--radius-md, 0.5rem);
+  cursor: pointer;
+}
+
+.graph-error-hint {
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #6b7280);
+}
+
+.graph-section {
+  margin-bottom: 2rem;
+}
+
+.graph-section-title {
+  color: var(--color-text-primary, #fff);
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.graph-edge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.graph-edge-card {
+  background: var(--color-card-bg, #16162a);
+  border: 1px solid var(--color-input-border, #2a2a3e);
+  border-radius: var(--radius-md, 0.5rem);
+  padding: 1rem;
+}
+
+.graph-edge-titles {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #fff);
+  font-size: 0.95rem;
+  margin-bottom: 0.4rem;
+}
+
+.graph-edge-arrow {
+  color: var(--color-accent-blue, #60a5fa);
+}
+
+.graph-edge-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.graph-edge-label {
+  color: var(--color-text-secondary, #9ca3af);
+}
+
+.graph-edge-score {
+  color: var(--color-success, #22c55e);
+  font-weight: 600;
+}

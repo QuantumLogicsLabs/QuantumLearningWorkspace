@@ -12,8 +12,13 @@ import ThemeToggle from "./ThemeToggle.jsx";
 import "./Dashboard.css";
 import DocumentPreviewModal from "./DocumentPreviewModal.jsx";
 import CustomSelect from "./CustomSelect.jsx";
+import KnowledgeGraphView from "./KnowledgeGraphView.jsx";
+
 
 // ─── Sub-Components ──────────────────────────────────────────────────────────
+
+
+
 
 function SidebarNav({ activeTab, setActiveTab, onRequestLogout }) {
   const { userEmail } = useAuth();
@@ -1126,21 +1131,8 @@ function ChatView({ targetDocument, setTargetDocument }) {
 }
 
 function GraphView() {
-  return (
-    <div className="graph-view">
-      <div className="graph-placeholder">
-        <span className="graph-icon">🌐</span>
-        <h3 className="graph-title">Knowledge Graph</h3>
-        <p className="graph-desc">
-          Visualize connections between concepts extracted from your study materials.
-          Upload more documents to generate your personalized knowledge graph with topic
-          relationships and concept maps.
-        </p>
-      </div>
-    </div>
-  );
+  return <KnowledgeGraphView />;
 }
-
 // ─── Main Dashboard Export ───────────────────────────────────────────────────
 
 export default function Dashboard() {
