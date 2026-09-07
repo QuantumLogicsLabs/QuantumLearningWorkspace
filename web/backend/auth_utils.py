@@ -73,6 +73,8 @@ def get_current_user_email(
         raise credentials_error
 
 
+import hmac
+
 def verify_internal_service_key(x_internal_key: Optional[str] = None) -> bool:
     """Verify the internal service key for backend-to-backend communication."""
     if not x_internal_key:
@@ -80,7 +82,7 @@ def verify_internal_service_key(x_internal_key: Optional[str] = None) -> bool:
             status_code=401,
             detail="Missing internal service key.",
         )
-    if x_internal_key != INTERNAL_SERVICE_KEY:
+    if not hmac.compare_digest(str(x_internal_key), str(INTERNAL_SERVICE_KEY)):
         raise HTTPException(
             status_code=403,
             detail="Invalid internal service key.",

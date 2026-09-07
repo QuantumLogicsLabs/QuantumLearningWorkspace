@@ -1130,8 +1130,8 @@ function ChatView({ targetDocument, setTargetDocument }) {
   );
 }
 
-function GraphView() {
-  return <KnowledgeGraphView />;
+function GraphView({ onNavigate }) {
+  return <KnowledgeGraphView onNavigate={onNavigate} />;
 }
 // ─── Main Dashboard Export ───────────────────────────────────────────────────
 
@@ -1179,7 +1179,9 @@ export default function Dashboard() {
           {activeTab === "roadmap" && (
             <StudyRoadmapView onNavigate={setActiveTab} />
           )}
-          {activeTab === "graph" && <GraphView />}
+          {activeTab === "graph" && (
+            <GraphView onNavigate={setActiveTab} />
+          )}
           {(activeTab === "profile" || activeTab === "settings") && (
             <ProfileView onRequestLogout={() => setShowLogoutModal(true)} />
           )}
