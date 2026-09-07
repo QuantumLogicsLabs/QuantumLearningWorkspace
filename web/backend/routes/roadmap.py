@@ -1,10 +1,17 @@
+import os
+import logging
 from typing import List, Dict, Any, Optional
+import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from auth_utils import get_current_user_email
 import database
 from models import RoadmapNextStep, RoadmapNextStepsResponse
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(tags=["roadmap"])
+
+ROADMAP_SERVICE_URL = os.getenv("ROADMAP_SERVICE_URL", "http://127.0.0.1:8004")
 
 # Curated high-yield fallback steps
 DEFAULT_CURATED_STEPS: List[Dict[str, Any]] = [
@@ -62,6 +69,8 @@ async def get_recommended_next_steps(
 
     if user_email:
         user_id = user_email.strip().lower()
+        weak_topics = []
+        recent_uploads_titles = []
 
         # 1. Pull weak topics from flashcard reviews
         try:
@@ -81,51 +90,140 @@ async def get_recommended_next_steps(
                     topic_aggregates[t]["still_learning"] += 1
 
             # Identify weak topics
-            weak_topics = []
             for t_name, stats in topic_aggregates.items():
                 if stats["still_learning"] > stats["known"] or (
                     stats["total"] >= 2 and (stats["known"] / stats["total"]) < 0.6
                 ):
                     weak_topics.append(t_name)
-
-            for wt in weak_topics[:2]:
-                next_steps.append(
-                    RoadmapNextStep(
-                        step_number=len(next_steps) + 1,
-                        topic=f"Review Weak Topic: {wt}",
-                        description=f"You marked questions in '{wt}' as needing practice. Strengthen your recall now.",
-                        estimated_duration="1 day",
-                        priority="high",
-                        action_label="Review Flashcards",
-                        target_tab="flashcards",
-                    )
-                )
         except Exception:
             pass
 
         # 2. Check user's recent uploads
-        if len(next_steps) < 3:
-            try:
-                uploads_col = database.get_uploads_collection()
-                recent_upload = await uploads_col.find_one(
-                    {"user_id": user_id, "status": "Ready"},
-                    sort=[("upload_date", -1)],
-                )
-                if recent_upload and recent_upload.get("filename"):
-                    clean_title = recent_upload["filename"].replace(".pdf", "").replace("_", " ").title()
-                    next_steps.append(
-                        RoadmapNextStep(
-                            step_number=len(next_steps) + 1,
-                            topic=f"Test Knowledge: {clean_title}",
-                            description=f"Generate a customized quiz or practice flashcards from your uploaded file '{recent_upload['filename']}'.",
-                            estimated_duration="1-2 days",
-                            priority="medium",
-                            action_label="Take Quiz",
-                            target_tab="quiz",
+        try:
+            uploads_col = database.get_uploads_collection()
+            recent_upload = await uploads_col.find_one(
+                {"user_id": user_id, "status": "Ready"},
+                sort=[("upload_date", -1)],
+            )
+            if recent_upload and recent_upload.get("filename"):
+                clean_title = recent_upload["filename"].replace(".pdf", "").replace("_", " ").title()
+                recent_uploads_titles.append(clean_title)
+        except Exception:
+            pass
+
+        # 3. Call Team Lambda Roadmap Generator API (Port 8004) if live & available
+        if authorization and not os.environ.get("PYTEST_CURRENT_TEST"):
+            candidate_topics: List[str] = []
+            priorities_map: Dict[str, str] = {}
+
+            for wt in weak_topics:
+                candidate_topics.append(wt)
+                priorities_map[wt] = "high"
+
+            for up in recent_uploads_titles:
+                if up not in candidate_topics:
+                    candidate_topics.append(up)
+                    priorities_map[up] = "normal"
+
+            # Ensure at least 3 topics for rich roadmap generation
+            for curated in DEFAULT_CURATED_STEPS:
+                if len(candidate_topics) >= 4:
+                    break
+                if curated["topic"] not in candidate_topics:
+                    candidate_topics.append(curated["topic"])
+
+            if candidate_topics:
+                try:
+                    async with httpx.AsyncClient(timeout=10.0) as client:
+                        resp = await client.post(
+                            f"{ROADMAP_SERVICE_URL}/generate-roadmap",
+                            json={
+                                "topic_names": candidate_topics,
+                                "subject": "Personalized Study Roadmap",
+                                "step_count": min(max(len(candidate_topics), 3), 5),
+                                "priorities": priorities_map,
+                            },
+                            headers={
+                                "Authorization": authorization,
+                                "Content-Type": "application/json",
+                            },
                         )
-                    )
-            except Exception:
-                pass
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            raw_steps = data.get("steps", [])
+                            if raw_steps:
+                                lambda_steps: List[RoadmapNextStep] = []
+                                for idx, s in enumerate(raw_steps):
+                                    t_name = s.get("topic", "")
+                                    desc = s.get("description", "")
+                                    dur = s.get("estimated_duration") or "1-2 days"
+
+                                    # Categorize step
+                                    is_weak = any(wt.lower() in t_name.lower() for wt in weak_topics) or (idx == 0 and bool(weak_topics))
+                                    is_upload = any(up.lower() in t_name.lower() for up in recent_uploads_titles)
+
+                                    if is_weak:
+                                        prio = "high"
+                                        action = "Review Flashcards"
+                                        tab = "flashcards"
+                                    elif is_upload:
+                                        prio = "medium"
+                                        action = "Take Quiz"
+                                        tab = "quiz"
+                                    else:
+                                        prio = "recommended"
+                                        action = "Take Quiz" if idx % 2 == 0 else "Study Flashcards"
+                                        tab = "quiz" if idx % 2 == 0 else "flashcards"
+
+                                    lambda_steps.append(
+                                        RoadmapNextStep(
+                                            step_number=s.get("step_number", idx + 1),
+                                            topic=t_name,
+                                            description=desc,
+                                            estimated_duration=dur,
+                                            priority=prio,
+                                            action_label=action,
+                                            target_tab=tab,
+                                        )
+                                    )
+
+                                return RoadmapNextStepsResponse(
+                                    success=True,
+                                    user_id=user_email,
+                                    subject=data.get("subject") or "Your Personalized Study Roadmap",
+                                    total_steps=len(lambda_steps),
+                                    next_steps=lambda_steps,
+                                )
+                except Exception as exc:
+                    logger.warning("Team Lambda Roadmap Generator unavailable or error (%s), using curated fallback.", exc)
+
+        # 4. Fallback synthesis (used if Lambda service is offline, unauthenticated, or in test mode)
+        for wt in weak_topics[:2]:
+            next_steps.append(
+                RoadmapNextStep(
+                    step_number=len(next_steps) + 1,
+                    topic=f"Review Weak Topic: {wt}",
+                    description=f"You marked questions in '{wt}' as needing practice. Strengthen your recall now.",
+                    estimated_duration="1 day",
+                    priority="high",
+                    action_label="Review Flashcards",
+                    target_tab="flashcards",
+                )
+            )
+
+        if len(next_steps) < 3 and recent_uploads_titles:
+            clean_title = recent_uploads_titles[0]
+            next_steps.append(
+                RoadmapNextStep(
+                    step_number=len(next_steps) + 1,
+                    topic=f"Test Knowledge: {clean_title}",
+                    description=f"Generate a customized quiz or practice flashcards from your uploaded file '{clean_title}'.",
+                    estimated_duration="1-2 days",
+                    priority="medium",
+                    action_label="Take Quiz",
+                    target_tab="quiz",
+                )
+            )
 
     # 3. Fill remaining slots with curated high-yield defaults up to 3
     default_idx = 0
