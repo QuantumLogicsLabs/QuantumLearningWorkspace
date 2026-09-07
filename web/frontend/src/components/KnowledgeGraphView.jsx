@@ -2,73 +2,30 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import "./KnowledgeGraphView.css";
 
-const GRAPH_API_BASE = "http://localhost:8005";
-
-// TEMP - for visually previewing UI states. Set to null before committing.
-// Options: null (real fetch), "loading", "error", "empty", "populated"
-const PREVIEW_MODE = "null";
-
-const MOCK_POPULATED_GRAPH = {
-  nodes: [
-    { id: "doc1", title: "Machine Learning Basics", node_type: "document" },
-    { id: "doc2", title: "Deep Learning Intro", node_type: "document" },
-    { id: "doc3", title: "History of Rome", node_type: "document" },
-  ],
-  edges: [
-    {
-      node_type: "document",
-      source_title: "Machine Learning Basics",
-      target_title: "Deep Learning Intro",
-      similarity: 0.87,
-      label: "shared terms: neural, gradient, training",
-    },
-    {
-      node_type: "topic",
-      source_title: "Machine Learning Basics",
-      target_title: "Deep Learning Intro",
-      similarity: 0.72,
-      label: "shared terms: backpropagation, weights",
-    },
-  ],
-};
+// Environment variable with fallback
+const GRAPH_API_BASE = import.meta.env.VITE_GRAPH_API_BASE_URL || "http://localhost:8005";
 
 export default function KnowledgeGraphView() {
-  const { token } = useAuth();
+  const { token, handle401 } = useAuth();
   const [graph, setGraph] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   function fetchGraph() {
-    // TEMP preview branches
-    if (PREVIEW_MODE === "loading") {
-      setLoading(true);
-      return;
-    }
-    if (PREVIEW_MODE === "error") {
-      setLoading(false);
-      setError("Failed to load knowledge graph");
-      return;
-    }
-    if (PREVIEW_MODE === "empty") {
-      setLoading(false);
-      setError("");
-      setGraph({ nodes: [], edges: [] });
-      return;
-    }
-    if (PREVIEW_MODE === "populated") {
-      setLoading(false);
-      setError("");
-      setGraph(MOCK_POPULATED_GRAPH);
-      return;
-    }
-
-    // Real fetch (normal behavior)
     setLoading(true);
     setError("");
-    fetch(`${GRAPH_API_BASE}/graph`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+
+    const headers = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    fetch(`${GRAPH_API_BASE}/graph`, { headers })
       .then((res) => {
+        if (res.status === 401 && handle401) {
+          handle401();
+          return;
+        }
         if (!res.ok) throw new Error("Failed to load knowledge graph");
         return res.json();
       })
@@ -77,7 +34,7 @@ export default function KnowledgeGraphView() {
         setLoading(false);
       })
       .catch((err) => {
-        setError(err.message);
+        setError(err.message || "Failed to load knowledge graph");
         setLoading(false);
       });
   }
