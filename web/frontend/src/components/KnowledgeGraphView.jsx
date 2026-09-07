@@ -153,7 +153,7 @@ export default function KnowledgeGraphView({ onNavigate }) {
       {/* ── Page Header ── */}
       <div className="kg-header">
         <div className="kg-title-group">
-          <div className="kg-icon-badge">🕸️</div>
+          <div className="kg-icon-badge">🌐</div>
           <div>
             <h2 className="kg-title">Knowledge Graph</h2>
             <p className="kg-subtitle">
