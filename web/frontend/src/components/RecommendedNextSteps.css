@@ -1,0 +1,233 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Recommended Next Steps — Dashboard Summary Section
+   Full Dark & Light Theme Support with index.css Design Tokens
+══════════════════════════════════════════════════════════════════════════ */
+
+.recommended-steps-container {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-xl, 1rem);
+  padding: 1.5rem 1.75rem;
+  box-shadow: 0 4px 20px var(--color-shadow);
+  margin-bottom: 1.5rem;
+  transition: all 0.25s ease;
+  animation: fadeInDown 0.35s ease;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.recommended-steps-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.recommended-steps-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.recommended-steps-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--gradient-logo, linear-gradient(135deg, #7c3aed, #ec4899));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+}
+
+.recommended-steps-heading {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0;
+  background: var(--gradient-heading);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.recommended-steps-subtitle {
+  font-size: 0.84rem;
+  color: var(--color-text-secondary);
+  margin: 0.2rem 0 0;
+}
+
+.recommended-steps-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  background: var(--color-surface-hover, rgba(124, 58, 237, 0.08));
+  color: var(--color-accent-purple, #a78bfa);
+  border: 1px solid var(--color-card-border);
+}
+
+/* ─── Cards Grid ─────────────────────────────────────────────────────────── */
+
+.recommended-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.1rem;
+}
+
+.recommended-step-card {
+  background: var(--color-input-bg, #121024);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-lg, 0.75rem);
+  padding: 1.25rem 1.35rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.recommended-step-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--color-card-border-hover, rgba(124, 58, 237, 0.4));
+  box-shadow: 0 8px 24px var(--color-shadow);
+}
+
+.recommended-step-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--step-accent, var(--color-primary-purple, #7c3aed));
+  border-radius: 4px 0 0 4px;
+}
+
+.step-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.step-number-badge {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--color-accent-purple, #a78bfa);
+  background: var(--color-surface-hover, rgba(124, 58, 237, 0.08));
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--color-card-border);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.step-priority-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  text-transform: capitalize;
+}
+
+.step-priority-pill.high {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--color-error, #ef4444);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.step-priority-pill.medium {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--color-warning, #f59e0b);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.step-priority-pill.recommended {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--color-success, #22c55e);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.step-topic-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0 0 0.45rem;
+  line-height: 1.4;
+}
+
+.step-desc {
+  font-size: 0.86rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin: 0 0 1rem;
+  flex: 1;
+}
+
+.step-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--color-border-subtle, rgba(255, 255, 255, 0.06));
+}
+
+.step-duration {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 500;
+}
+
+.step-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.95rem;
+  border-radius: var(--radius-md, 0.5rem);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: var(--gradient-primary, linear-gradient(135deg, #7c3aed, #2563eb));
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
+  white-space: nowrap;
+}
+
+.step-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
+  opacity: 0.95;
+}
+
+/* ─── Responsive Adjustments ────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .recommended-steps-container {
+    padding: 1.25rem 1rem;
+  }
+  .recommended-steps-grid {
+    grid-template-columns: 1fr;
+  }
+}

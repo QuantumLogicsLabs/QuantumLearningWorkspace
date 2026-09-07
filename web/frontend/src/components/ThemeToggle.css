@@ -1,0 +1,96 @@
+/* Theme Toggle Button Styles */
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--color-surface-hover, rgba(124, 58, 237, 0.08));
+  border: 1px solid var(--color-border-subtle, rgba(124, 58, 237, 0.2));
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  user-select: none;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--color-surface-active, rgba(124, 58, 237, 0.16));
+  border-color: var(--color-primary-purple);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--color-shadow);
+}
+
+.theme-toggle-btn:active {
+  transform: translateY(0);
+}
+
+.theme-toggle-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.theme-toggle-btn:hover .theme-toggle-icon-container {
+  transform: rotate(15deg) scale(1.1);
+}
+
+.theme-svg {
+  display: block;
+  transition: all 0.25s ease;
+}
+
+.sun-svg {
+  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.6));
+}
+
+.moon-svg {
+  filter: drop-shadow(0 0 4px rgba(99, 102, 241, 0.6));
+}
+
+.theme-toggle-label {
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.theme-toggle-btn:hover .theme-toggle-label {
+  color: var(--color-text-primary);
+}
+
+/* Switch Variant for Profile Settings */
+.theme-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.theme-switch-row:last-child {
+  border-bottom: none;
+}
+
+.theme-switch-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.theme-switch-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.theme-switch-desc {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}

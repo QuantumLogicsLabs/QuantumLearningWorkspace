@@ -1,0 +1,11 @@
+{
+  "include": [
+    "web/backend"
+  ],
+  "extraPaths": [
+    "web/backend",
+    "web/backend/routes"
+  ],
+  "venvPath": "web/backend",
+  "venv": ".venv"
+}
