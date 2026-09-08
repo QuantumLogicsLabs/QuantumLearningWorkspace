@@ -44,6 +44,7 @@ logger = logging.getLogger("uvicorn")
 app = FastAPI(title="StudyMind AI Backend")
 
 origins = [
+    "https://quantum-learning-workspace.vercel.app",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:3000",
@@ -75,7 +76,7 @@ UPLOAD_DIRECTORY = os.getenv(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploaded_files"),
 )
 INGESTION_SERVICE_URL = os.getenv("INGESTION_SERVICE_URL", "http://localhost:8001")
-
+print(f"DEBUG: INGESTION_SERVICE_URL = {repr(INGESTION_SERVICE_URL)}", flush=True)
 
 async def process_file_ingestion(file_id: Any, document_id: str, filename: str, user_id: str):
     """Forward the uploaded file to the ingestion service for chunking + embedding and persist results."""
@@ -607,3 +608,4 @@ async def get_quiz_results_by_user_id(
         })
 
     return results
+
