@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import "./FlashcardsView.css";
+import CustomSelect from "./CustomSelect.jsx";
 
 const QUICK_TOPICS = [
   "Quantum Computing",
@@ -277,29 +278,31 @@ export default function FlashcardsView() {
                 onChange={(e) => setTopicInput(e.target.value)}
                 disabled={isGenerating}
               />
-              <select
-                className="flashcards-select"
+              <CustomSelect
+                className="flashcards-custom-select"
                 value={numCards}
-                onChange={(e) => setNumCards(Number(e.target.value))}
+                onChange={(val) => setNumCards(Number(val))}
+                options={[
+                  { value: 5, label: "5 Cards" },
+                  { value: 10, label: "10 Cards" },
+                  { value: 15, label: "15 Cards" },
+                  { value: 20, label: "20 Cards" },
+                ]}
                 disabled={isGenerating}
                 title="Number of cards"
-              >
-                <option value={5}>5 Cards</option>
-                <option value={10}>10 Cards</option>
-                <option value={15}>15 Cards</option>
-                <option value={20}>20 Cards</option>
-              </select>
-              <select
-                className="flashcards-select"
+              />
+              <CustomSelect
+                className="flashcards-custom-select"
                 value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value)}
+                onChange={setDifficulty}
+                options={[
+                  { value: "easy", label: "Easy" },
+                  { value: "medium", label: "Medium" },
+                  { value: "hard", label: "Hard" },
+                ]}
                 disabled={isGenerating}
                 title="Difficulty level"
-              >
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
+              />
               <button
                 type="submit"
                 className="flashcards-generate-btn"

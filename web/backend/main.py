@@ -37,12 +37,14 @@ from routes.chat import router as chat_router
 from routes.oauth import router as oauth_router
 from routes.quiz import router as quiz_router
 from routes.flashcards import router as flashcards_router
+from routes.roadmap import router as roadmap_router
 
 logger = logging.getLogger("uvicorn")
 
 app = FastAPI(title="StudyMind AI Backend")
 
 origins = [
+    "https://quantum-learning-workspace.vercel.app",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:3000",
@@ -66,6 +68,7 @@ app.include_router(chat_router)
 app.include_router(oauth_router)
 app.include_router(quiz_router)
 app.include_router(flashcards_router)
+app.include_router(roadmap_router)
 
 
 UPLOAD_DIRECTORY = os.getenv(
@@ -73,7 +76,7 @@ UPLOAD_DIRECTORY = os.getenv(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploaded_files"),
 )
 INGESTION_SERVICE_URL = os.getenv("INGESTION_SERVICE_URL", "http://localhost:8001")
-
+print(f"DEBUG: INGESTION_SERVICE_URL = {repr(INGESTION_SERVICE_URL)}", flush=True)
 
 async def process_file_ingestion(file_id: Any, document_id: str, filename: str, user_id: str):
     """Forward the uploaded file to the ingestion service for chunking + embedding and persist results."""
@@ -560,6 +563,8 @@ async def get_quiz_results(current_user_email: str = Depends(get_current_user_em
     async for doc in cursor:
         dt = doc.get("date_taken")
         if isinstance(dt, datetime):
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
             dt = dt.isoformat()
         results.append({
             "id": str(doc.get("_id", "")),
@@ -589,6 +594,8 @@ async def get_quiz_results_by_user_id(
     async for doc in cursor:
         dt = doc.get("date_taken")
         if isinstance(dt, datetime):
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
             dt = dt.isoformat()
         results.append({
             "id": str(doc.get("_id", "")),
@@ -601,3 +608,4 @@ async def get_quiz_results_by_user_id(
         })
 
     return results
+

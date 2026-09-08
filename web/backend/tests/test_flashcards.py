@@ -278,3 +278,26 @@ async def test_get_user_reviews_history(auth_headers):
         data = response.json()
         assert data["total_reviews"] >= 1
         assert any(r["flashcard_id"] == "card-hist-1" for r in data["reviews"])
+
+
+@pytest.mark.asyncio
+async def test_generate_flashcards_dynamic_topic(auth_headers):
+    """Verify that arbitrary topics (e.g., 'Computer') generate valid structured flashcards."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/generate-flashcards",
+            json={"topic": "Computer Architecture", "num_cards": 3, "difficulty": "hard"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["topic"] == "Computer Architecture"
+        assert len(data["cards"]) == 3
+        for card in data["cards"]:
+            assert "id" in card and card["id"]
+            assert "front" in card and len(card["front"]) > 5
+            assert "back" in card and len(card["back"]) > 5
+            assert card["difficulty"] == "hard"
+
