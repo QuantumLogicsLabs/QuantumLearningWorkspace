@@ -11,6 +11,7 @@ from youtube_transcript_api._errors import (
 )
 
 from ingestion.youtube.cleaner import clean_youtube_text
+from ingestion.youtube.whisper_fallback import transcribe_with_whisper
 from ingestion.common.schema import build_result
 
 
@@ -52,27 +53,26 @@ def fetch_metadata(url: str) -> dict:
     }
 
 
-def fetch_transcript(video_id: str, languages=("en",)) -> str:
+def fetch_transcript(video_id: str, url: str, languages=("en",)) -> str:
+    """
+    [Whisper fallback added] Previously, a TranscriptsDisabled or
+    NoTranscriptFound error retried with an equivalent call
+    (api.fetch(video_id) with no languages) — not a real fallback,
+    just a second attempt at the same thing. Now it falls back to
+    downloading the audio and transcribing it with Whisper, which is
+    a genuinely different path that works even when captions don't
+    exist at all.
+    """
     try:
         api = YouTubeTranscriptApi()
-
-        transcript = api.fetch(
-            video_id,
-            languages=list(languages)
-        )
+        transcript = api.fetch(video_id, languages=list(languages))
+        return " ".join(segment.text for segment in transcript)
 
     except (TranscriptsDisabled, NoTranscriptFound):
-        api = YouTubeTranscriptApi()
-        transcript = api.fetch(video_id)
+        return transcribe_with_whisper(url)
 
     except VideoUnavailable as e:
         raise RuntimeError(f"Video unavailable: {video_id}") from e
-
-    merged = " ".join(
-        segment.text for segment in transcript
-    )
-
-    return merged
 
 
 def ingest_youtube(url: str) -> dict:
@@ -80,7 +80,7 @@ def ingest_youtube(url: str) -> dict:
 
     metadata = fetch_metadata(url)
 
-    raw_text = fetch_transcript(video_id)
+    raw_text = fetch_transcript(video_id, url)
 
     cleaned_text = clean_youtube_text(raw_text)
 
