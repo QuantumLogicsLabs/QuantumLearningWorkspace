@@ -1,12 +1,17 @@
-{
-  "python.defaultInterpreterPath": "${workspaceFolder}/web/backend/.venv/Scripts/python.exe",
-  "python.analysis.extraPaths": [
-    "${workspaceFolder}/web/backend",
-    "${workspaceFolder}/web/backend/routes"
-  ],
-  "python.autoComplete.extraPaths": [
-    "${workspaceFolder}/web/backend",
-    "${workspaceFolder}/web/backend/routes"
-  ],
-  "python.analysis.autoSearchPaths": true
+ {
+    "python.defaultInterpreterPath": "${workspaceFolder}/web/backend/.venv/Scripts/python.exe",
+
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/web/backend",
+        "${workspaceFolder}/web/backend/routes",
+        "${workspaceFolder}/ai-ml"
+    ],
+
+    "python.autoComplete.extraPaths": [
+        "${workspaceFolder}/web/backend",
+        "${workspaceFolder}/web/backend/routes",
+        "${workspaceFolder}/ai-ml"
+    ],
+
+    "python.analysis.autoSearchPaths": true
 }
