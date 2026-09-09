@@ -44,14 +44,14 @@ def extract_video_id(url: str) -> str:
 
 
 def fetch_metadata(url: str) -> dict:
-    options: dict[str, Any] = {
+    options = {
         "quiet": True,
         "no_warnings": True,
         "skip_download": True,
     }
 
     try:
-        with yt_dlp.YoutubeDL(options) as ydl:
+        with yt_dlp.YoutubeDL(options) as ydl:  # type: ignore[arg-type]
             info = ydl.extract_info(url, download=False)
     except DownloadError as e:
         raise VideoUnavailableError(
@@ -66,7 +66,6 @@ def fetch_metadata(url: str) -> dict:
         "duration": info.get("duration"),
         "date": info.get("upload_date"),
     }
-
 
 def fetch_transcript(video_id: str, languages=("en",)) -> dict:
     """

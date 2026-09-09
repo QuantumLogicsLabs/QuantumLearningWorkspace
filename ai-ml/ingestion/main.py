@@ -71,8 +71,8 @@ def _chunk_and_store(result: dict, user_id: str) -> dict:
 @app.post("/ingest/pdf")
 async def ingest_pdf_endpoint(
     file: UploadFile = File(...),
-    # user_id: str = Depends(get_current_user_id),
-    user_id="test_user",
+    user_id: str = Depends(get_current_user_id),
+    # user_id="test_user",
 ):
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="File must be a PDF")
@@ -100,8 +100,8 @@ async def ingest_pdf_endpoint(
 @app.post("/ingest/youtube")
 async def ingest_youtube_endpoint(
     payload: URLRequest,
-   # user_id: str = Depends(get_current_user_id),
-    user_id = "test_user",
+   user_id: str = Depends(get_current_user_id),
+    # user_id = "test_user",
 ):
     try:
         result = ingest_youtube(payload.url)
