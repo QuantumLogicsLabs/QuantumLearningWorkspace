@@ -111,26 +111,28 @@ async def get_recommended_next_steps(
         except Exception:
             pass
 
+        has_user_activity = bool(weak_topics or recent_uploads_titles)
+
         # 3. Call Team Lambda Roadmap Generator API (Port 8004) if live & available
         if authorization and not os.environ.get("PYTEST_CURRENT_TEST"):
             candidate_topics: List[str] = []
             priorities_map: Dict[str, str] = {}
 
-            for wt in weak_topics:
-                candidate_topics.append(wt)
-                priorities_map[wt] = "high"
+            if has_user_activity:
+                # Strictly use the user's actual weak topics and uploads (NO placeholders)
+                for wt in weak_topics:
+                    candidate_topics.append(wt)
+                    priorities_map[wt] = "high"
 
-            for up in recent_uploads_titles:
-                if up not in candidate_topics:
-                    candidate_topics.append(up)
-                    priorities_map[up] = "normal"
-
-            # Ensure at least 3 topics for rich roadmap generation
-            for curated in DEFAULT_CURATED_STEPS:
-                if len(candidate_topics) >= 4:
-                    break
-                if curated["topic"] not in candidate_topics:
+                for up in recent_uploads_titles:
+                    if up not in candidate_topics:
+                        candidate_topics.append(up)
+                        priorities_map[up] = "normal"
+            else:
+                # Brand new user with no activity: use curated topics
+                for curated in DEFAULT_CURATED_STEPS:
                     candidate_topics.append(curated["topic"])
+                    priorities_map[curated["topic"]] = curated["priority"]
 
             if candidate_topics:
                 try:
@@ -140,7 +142,7 @@ async def get_recommended_next_steps(
                             json={
                                 "topic_names": candidate_topics,
                                 "subject": "Personalized Study Roadmap",
-                                "step_count": min(max(len(candidate_topics), 3), 5),
+                                "step_count": min(max(len(candidate_topics), 3), 5) if not has_user_activity else max(len(candidate_topics), 2),
                                 "priorities": priorities_map,
                             },
                             headers={
@@ -198,39 +200,54 @@ async def get_recommended_next_steps(
                     logger.warning("Team Lambda Roadmap Generator unavailable or error (%s), using curated fallback.", exc)
 
         # 4. Fallback synthesis (used if Lambda service is offline, unauthenticated, or in test mode)
-        for wt in weak_topics[:2]:
-            next_steps.append(
-                RoadmapNextStep(
-                    step_number=len(next_steps) + 1,
-                    topic=f"Review Weak Topic: {wt}",
-                    description=f"You marked questions in '{wt}' as needing practice. Strengthen your recall now.",
-                    estimated_duration="1 day",
-                    priority="high",
-                    action_label="Review Flashcards",
-                    target_tab="flashcards",
+        if has_user_activity:
+            # User has activity: build steps ONLY from weak topics and uploads (NO placeholders)
+            for wt in weak_topics[:3]:
+                next_steps.append(
+                    RoadmapNextStep(
+                        step_number=len(next_steps) + 1,
+                        topic=f"Review Weak Topic: {wt}",
+                        description=f"You marked questions in '{wt}' as needing practice. Strengthen your recall now.",
+                        estimated_duration="1 day",
+                        priority="high",
+                        action_label="Review Flashcards",
+                        target_tab="flashcards",
+                    )
                 )
-            )
 
-        if len(next_steps) < 3 and recent_uploads_titles:
-            clean_title = recent_uploads_titles[0]
-            next_steps.append(
-                RoadmapNextStep(
-                    step_number=len(next_steps) + 1,
-                    topic=f"Test Knowledge: {clean_title}",
-                    description=f"Generate a customized quiz or practice flashcards from your uploaded file '{clean_title}'.",
-                    estimated_duration="1-2 days",
-                    priority="medium",
-                    action_label="Take Quiz",
-                    target_tab="quiz",
+            for up in recent_uploads_titles[:2]:
+                if len(next_steps) >= 3:
+                    break
+                next_steps.append(
+                    RoadmapNextStep(
+                        step_number=len(next_steps) + 1,
+                        topic=f"Test Knowledge: {up}",
+                        description=f"Generate a customized quiz or practice flashcards from your uploaded file '{up}'.",
+                        estimated_duration="1-2 days",
+                        priority="medium",
+                        action_label="Take Quiz",
+                        target_tab="quiz",
+                    )
                 )
-            )
 
-    # 3. Fill remaining slots with curated high-yield defaults up to 3
-    default_idx = 0
-    while len(next_steps) < 3 and default_idx < len(DEFAULT_CURATED_STEPS):
-        item = DEFAULT_CURATED_STEPS[default_idx]
-        # Avoid duplicate topic names
-        if not any(item["topic"].lower() in s.topic.lower() for s in next_steps):
+            # If user has only 1 weak topic and no uploads, create reinforcement step for that same weak topic
+            if len(next_steps) == 1 and weak_topics:
+                wt = weak_topics[0]
+                next_steps.append(
+                    RoadmapNextStep(
+                        step_number=2,
+                        topic=f"Test Mastery: {wt}",
+                        description=f"Validate your understanding of '{wt}' with an active practice quiz.",
+                        estimated_duration="1-2 days",
+                        priority="medium",
+                        action_label="Take Quiz",
+                        target_tab="quiz",
+                    )
+                )
+
+    # 5. Curated default placeholders are ONLY shown if user has ZERO activity (next_steps is still empty)
+    if not next_steps:
+        for item in DEFAULT_CURATED_STEPS:
             next_steps.append(
                 RoadmapNextStep(
                     step_number=len(next_steps) + 1,
@@ -242,12 +259,11 @@ async def get_recommended_next_steps(
                     target_tab=item["target_tab"],
                 )
             )
-        default_idx += 1
 
     return RoadmapNextStepsResponse(
         success=True,
         user_id=user_email or "guest",
         subject="Your Personalized Study Roadmap",
         total_steps=len(next_steps),
-        next_steps=next_steps[:3],  # Ensure top 2-3 items
+        next_steps=next_steps[:3],
     )
