@@ -66,3 +66,8 @@ async def test_get_recommended_next_steps_authenticated_with_weak_topics(auth_he
             assert "Quantum Teleportation" in step1["topic"]
             assert step1["priority"] == "high"
             assert step1["target_tab"] == "flashcards"
+
+            # Verify no generic placeholders ("Machine Learning Foundations", "Quantum Computing") are present
+            topics = [s["topic"] for s in data["next_steps"]]
+            assert not any("Machine Learning Foundations" in t for t in topics)
+            assert not any("Curated Default" in s.get("description", "") for s in data["next_steps"])
