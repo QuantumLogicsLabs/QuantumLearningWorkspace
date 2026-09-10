@@ -75,11 +75,46 @@ UPLOAD_DIRECTORY = os.getenv(
 )
 INGESTION_SERVICE_URL = os.getenv("INGESTION_SERVICE_URL", "http://localhost:8001")
 print(f"DEBUG: INGESTION_SERVICE_URL = {repr(INGESTION_SERVICE_URL)}", flush=True)
+# Embedding a PDF on a cold Railway worker routinely exceeds 15s.
+INGESTION_TIMEOUT_SECONDS = float(os.getenv("INGESTION_TIMEOUT_SECONDS", "180"))
+
+
+def _ingestion_candidate_urls(suffix: str) -> list[str]:
+    """
+    Chatbot production mounts Lambda at /ingestion (see chatbot/rag-engine/main.py).
+    Standalone Lambda still serves /ingest/pdf at the host root (local :8001).
+    Try the configured base first, then the mounted prefix if that 404s.
+    """
+    base = INGESTION_SERVICE_URL.rstrip("/")
+    suffix = suffix if suffix.startswith("/") else f"/{suffix}"
+    urls = [f"{base}{suffix}"]
+    if not base.endswith("/ingestion"):
+        urls.append(f"{base}/ingestion{suffix}")
+    return urls
+
+
+async def _ingestion_request(method: str, suffix: str, **kwargs) -> httpx.Response:
+    last_response: Optional[httpx.Response] = None
+    last_error: Optional[Exception] = None
+    timeout = kwargs.pop("timeout", INGESTION_TIMEOUT_SECONDS)
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        for url in _ingestion_candidate_urls(suffix):
+            try:
+                response = await client.request(method, url, **kwargs)
+            except Exception as exc:
+                last_error = exc
+                logger.warning(f"Ingestion {method} {url} failed: {exc}")
+                continue
+            last_response = response
+            if response.status_code != 404:
+                return response
+            logger.warning(f"Ingestion {method} {url} returned 404; trying next candidate")
+    if last_response is not None:
+        return last_response
+    raise last_error or RuntimeError("Ingestion service request failed")
+
 
 async def process_file_ingestion(file_id: Any, document_id: str, filename: str, user_id: str):
-    print("🚀 START ingestion process")
-    print("INGESTION URL:", INGESTION_SERVICE_URL)
-    print("FINAL URL:", f"{INGESTION_SERVICE_URL}/ingest/pdf")
     """Forward the uploaded file to the ingestion service for chunking + embedding and persist results."""
     uploads = get_uploads_collection()
 
@@ -88,7 +123,7 @@ async def process_file_ingestion(file_id: Any, document_id: str, filename: str, 
     if not file_path or not os.path.exists(file_path):
         file_path = os.path.join(UPLOAD_DIRECTORY, filename)
 
-    new_status = "Ready"
+    new_status = "Failed"
     chunks_stored = 0
     last_error = None
     returned_document_id = document_id
@@ -98,22 +133,31 @@ async def process_file_ingestion(file_id: Any, document_id: str, filename: str, 
             with open(file_path, "rb") as f:
                 file_bytes = f.read()
 
-            async with httpx.AsyncClient(timeout=15) as client:
-                internal_token = create_access_token(email=user_id)
-                response = await client.post(
-                    f"{INGESTION_SERVICE_URL.rstrip('/')}/ingest/pdf",
-                    files={"file": (filename, file_bytes, "application/pdf")},
-                    headers={"Authorization": f"Bearer {internal_token}"},
-                )
+            internal_token = create_access_token(email=user_id)
+            response = await _ingestion_request(
+                "POST",
+                "/ingest/pdf",
+                files={"file": (filename, file_bytes, "application/pdf")},
+                headers={"Authorization": f"Bearer {internal_token}"},
+            )
 
             if response.status_code == 200:
                 try:
                     data = response.json()
                     returned_document_id = data.get("document_id") or document_id
-                    chunks_stored = data.get("chunks_stored", 0)
-                    new_status = "Ready"
-                except Exception:
-                    new_status = "Ready"
+                    chunks_stored = int(data.get("chunks_stored") or 0)
+                except Exception as exc:
+                    new_status = "Failed"
+                    last_error = f"Ingestion returned 200 but body was not usable JSON: {exc}"
+                else:
+                    if chunks_stored > 0:
+                        new_status = "Ready"
+                    else:
+                        new_status = "Failed"
+                        last_error = (
+                            "Ingestion returned 200 but stored 0 chunks. "
+                            "The PDF may have no extractable text, or the request hit the wrong service."
+                        )
             else:
                 logger.warning(
                     f"Ingestion service responded with {response.status_code}: {response.text}"
@@ -358,18 +402,18 @@ async def delete_upload(
     document_id = upload_doc.get("document_id") or str(upload_doc.get("_id"))
 
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            purge_url = f"{INGESTION_SERVICE_URL.rstrip('/')}/documents/{document_id}"
-            internal_token = create_access_token(email=email_clean)
-            purge_res = await client.delete(
-                purge_url,
-                headers={"Authorization": f"Bearer {internal_token}"},
-                params={"user_id": email_clean},
+        internal_token = create_access_token(email=email_clean)
+        purge_res = await _ingestion_request(
+            "DELETE",
+            f"/documents/{document_id}",
+            headers={"Authorization": f"Bearer {internal_token}"},
+            params={"user_id": email_clean},
+            timeout=30.0,
+        )
+        if purge_res.status_code != 200:
+            logger.warning(
+                f"Vector purge for doc {document_id} returned status {purge_res.status_code}: {purge_res.text}"
             )
-            if purge_res.status_code != 200:
-                logger.warning(
-                    f"Vector purge for doc {document_id} returned status {purge_res.status_code}: {purge_res.text}"
-                )
     except Exception as e:
         logger.warning(f"Failed to connect to ingestion service for vector purge: {e}")
 
