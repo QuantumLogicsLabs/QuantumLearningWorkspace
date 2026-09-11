@@ -1,4 +1,5 @@
 import os
+import uuid
 import shutil
 import logging
 from typing import Optional, Dict, Any, List
@@ -8,6 +9,7 @@ from bson import ObjectId
 from fastapi import FastAPI, HTTPException, Header, UploadFile, File, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pypdf import PdfReader
+import httpx
 
 from models import (
     SignupRequest,
@@ -34,13 +36,15 @@ from auth_utils import (
 from routes.chat import router as chat_router
 from routes.oauth import router as oauth_router
 from routes.quiz import router as quiz_router
-import httpx
+from routes.flashcards import router as flashcards_router
+from routes.roadmap import router as roadmap_router
 
 logger = logging.getLogger("uvicorn")
 
 app = FastAPI(title="StudyMind AI Backend")
 
 origins = [
+    "https://quantum-learning-workspace.vercel.app",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:3000",
@@ -63,34 +67,73 @@ app.add_middleware(
 app.include_router(chat_router)
 app.include_router(oauth_router)
 app.include_router(quiz_router)
+app.include_router(flashcards_router)
+app.include_router(roadmap_router)
 
 
-UPLOAD_DIRECTORY = "uploaded_files"
+UPLOAD_DIRECTORY = os.getenv(
+    "UPLOAD_DIRECTORY",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploaded_files"),
+)
 INGESTION_SERVICE_URL = os.getenv("INGESTION_SERVICE_URL", "http://localhost:8001")
+print(f"DEBUG: INGESTION_SERVICE_URL = {repr(INGESTION_SERVICE_URL)}", flush=True)
 
-async def process_file_ingestion(file_id, filename: str, user_id: str):
-    """Forward the uploaded file to the ingestion service for chunking + embedding."""
+async def process_file_ingestion(file_id: Any, document_id: str, filename: str, user_id: str):
+    print("🚀 START ingestion process")
+    print("INGESTION URL:", INGESTION_SERVICE_URL)
+    print("FINAL URL:", f"{INGESTION_SERVICE_URL}/ingest/pdf")
+    """Forward the uploaded file to the ingestion service for chunking + embedding and persist results."""
     uploads = get_uploads_collection()
-    file_path = os.path.join(UPLOAD_DIRECTORY, filename)
+
+    # Determine file path on disk: prefer <document_id>.pdf, fallback to filename
+    file_path = os.path.join(UPLOAD_DIRECTORY, f"{document_id}.pdf") if document_id else None
+    if not file_path or not os.path.exists(file_path):
+        file_path = os.path.join(UPLOAD_DIRECTORY, filename)
 
     new_status = "Ready"
+    chunks_stored = 0
+    last_error = None
+    returned_document_id = document_id
+
     if os.path.exists(file_path):
         try:
             with open(file_path, "rb") as f:
-                async with httpx.AsyncClient(timeout=60) as client:
-                    response = await client.post(
-                        f"{INGESTION_SERVICE_URL.rstrip('/')}/ingest/pdf",
-                        files={"file": (filename, f, "application/pdf")},
-                        data={"user_id": user_id},
-                    )
-            if response.status_code != 200:
-                logger.warning(f"Ingestion service responded with {response.status_code}")
+                file_bytes = f.read()
+
+            async with httpx.AsyncClient(timeout=15) as client:
+                internal_token = create_access_token(email=user_id)
+                response = await client.post(
+                    f"{INGESTION_SERVICE_URL.rstrip('/')}/ingest/pdf",
+                    files={"file": (filename, file_bytes, "application/pdf")},
+                    headers={"Authorization": f"Bearer {internal_token}"},
+                )
+
+            if response.status_code == 200:
+                try:
+                    data = response.json()
+                    returned_document_id = data.get("document_id") or document_id
+                    chunks_stored = data.get("chunks_stored", 0)
+                    new_status = "Ready"
+                except Exception:
+                    new_status = "Ready"
+            else:
+                logger.warning(
+                    f"Ingestion service responded with {response.status_code}: {response.text}"
+                )
                 new_status = "Failed"
+                last_error = (
+                    f"Ingestion failed ({response.status_code}): {response.text}"
+                )
+
         except Exception as e:
-            logger.warning(f"Ingestion error for {filename}: {e}")
+            logger.warning(
+                f"Ingestion error for {filename} ({document_id}): {e}"
+            )
             new_status = "Failed"
+            last_error = str(e)
     else:
         new_status = "Failed"
+        last_error = "File not found on disk"
 
     query: Dict[str, Any] = {"user_id": user_id}
     if file_id:
@@ -98,10 +141,20 @@ async def process_file_ingestion(file_id, filename: str, user_id: str):
             query["_id"] = ObjectId(str(file_id))
         except Exception:
             query["_id"] = str(file_id)
+    elif document_id:
+        query["document_id"] = document_id
     else:
         query["filename"] = filename
 
-    await uploads.update_one(query, {"$set": {"status": new_status}})
+    update_fields: Dict[str, Any] = {
+        "status": new_status,
+        "document_id": returned_document_id,
+        "chunks_stored": chunks_stored,
+        "processed_at": datetime.now(timezone.utc),
+        "last_error": last_error,
+    }
+
+    await uploads.update_one(query, {"$set": update_fields})
 
 
 @app.get("/health")
@@ -201,18 +254,27 @@ async def upload_file(
     file: UploadFile = File(...),
     current_user_email: str = Depends(get_current_user_email),
 ):
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Invalid file: filename is missing.")
+
     os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
-    filename = file.filename or "uploaded_file.pdf"
-    file_path = os.path.join(UPLOAD_DIRECTORY, filename)
+    filename = file.filename
+    document_id = str(uuid.uuid4())
+    physical_filename = f"{document_id}.pdf"
+    file_path = os.path.join(UPLOAD_DIRECTORY, physical_filename)
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
     upload_record = Upload(
         filename=filename,
+        document_id=document_id,
         file_type=file.content_type or "application/pdf",
         user_id=current_user_email.strip().lower(),
         status="Processing",
+        chunks_stored=0,
+        last_error=None,
+        processed_at=None,
     )
 
     uploads = get_uploads_collection()
@@ -222,12 +284,14 @@ async def upload_file(
     background_tasks.add_task(
         process_file_ingestion,
         file_id=inserted_id,
+        document_id=document_id,
         filename=filename,
         user_id=current_user_email.strip().lower(),
     )
 
     return {
         "message": "File uploaded successfully and ingestion pipeline started.",
+        "document_id": upload_record.document_id,
         "filename": upload_record.filename,
         "status": upload_record.status,
     }
@@ -245,12 +309,20 @@ async def get_uploads(current_user_email: str = Depends(get_current_user_email))
         upload_date = document.get("upload_date")
         if isinstance(upload_date, datetime):
             upload_date = upload_date.isoformat()
+        processed_at = document.get("processed_at")
+        if isinstance(processed_at, datetime):
+            processed_at = processed_at.isoformat()
+
         user_uploads.append({
             "id": str(document["_id"]),
+            "document_id": document.get("document_id"),
             "filename": document.get("filename", ""),
             "upload_date": upload_date,
+            "processed_at": processed_at,
             "file_type": document.get("file_type", "application/pdf"),
             "status": document.get("status", "Processing"),
+            "chunks_stored": document.get("chunks_stored", 0),
+            "last_error": document.get("last_error"),
         })
 
     return user_uploads
@@ -265,7 +337,7 @@ async def delete_upload(
     email_clean = current_user_email.strip().lower()
 
     try:
-        search_query = {"_id": ObjectId(upload_id), "user_id": email_clean}
+        search_query: Dict[str, Any] = {"_id": ObjectId(upload_id), "user_id": email_clean}
     except Exception:
         search_query = {"_id": upload_id, "user_id": email_clean}
 
@@ -276,19 +348,51 @@ async def delete_upload(
             search_query = {"_id": upload_id, "user_id": email_clean}
 
     if not upload_doc:
+        # Also support deleting by document_id
+        upload_doc = await uploads.find_one({"document_id": upload_id, "user_id": email_clean})
+        if upload_doc:
+            search_query = {"document_id": upload_id, "user_id": email_clean}
+
+    if not upload_doc:
         raise HTTPException(status_code=404, detail="Upload not found")
 
-    filename = upload_doc.get("filename")
-    if filename:
-        file_path = os.path.join(UPLOAD_DIRECTORY, filename)
+    # 1. Purge vector embeddings from ChromaDB via Lambda Ingestion service
+    document_id = upload_doc.get("document_id") or str(upload_doc.get("_id"))
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            purge_url = f"{INGESTION_SERVICE_URL.rstrip('/')}/documents/{document_id}"
+            internal_token = create_access_token(email=email_clean)
+            purge_res = await client.delete(
+                purge_url,
+                headers={"Authorization": f"Bearer {internal_token}"},
+                params={"user_id": email_clean},
+            )
+            if purge_res.status_code != 200:
+                logger.warning(
+                    f"Vector purge for doc {document_id} returned status {purge_res.status_code}: {purge_res.text}"
+                )
+    except Exception as e:
+        logger.warning(f"Failed to connect to ingestion service for vector purge: {e}")
+
+    # 2. Delete local physical file
+    possible_filenames = []
+    if upload_doc.get("document_id"):
+        possible_filenames.append(f"{upload_doc['document_id']}.pdf")
+    if upload_doc.get("filename"):
+        possible_filenames.append(upload_doc["filename"])
+
+    for fname in possible_filenames:
+        file_path = os.path.join(UPLOAD_DIRECTORY, fname)
         if os.path.exists(file_path):
             try:
                 os.remove(file_path)
             except Exception as e:
                 logger.warning(f"Could not remove file {file_path}: {e}")
 
+    # 3. Delete MongoDB record
     await uploads.delete_one(search_query)
-    return {"message": "Upload deleted successfully"}
+    return {"message": "Upload and vector embeddings deleted successfully"}
 
 
 @app.get("/uploads/{upload_id}/preview")
@@ -300,7 +404,7 @@ async def get_document_preview(
     email_clean = current_user_email.strip().lower()
 
     try:
-        search_query = {"_id": ObjectId(upload_id), "user_id": email_clean}
+        search_query: Dict[str, Any] = {"_id": ObjectId(upload_id), "user_id": email_clean}
     except Exception:
         search_query = {"_id": upload_id, "user_id": email_clean}
 
@@ -309,19 +413,35 @@ async def get_document_preview(
         upload_doc = await uploads.find_one({"_id": upload_id, "user_id": email_clean})
 
     if not upload_doc:
+        # Also check by document_id
+        upload_doc = await uploads.find_one({"document_id": upload_id, "user_id": email_clean})
+
+    if not upload_doc:
         raise HTTPException(status_code=404, detail="Upload not found")
 
+    doc_id = upload_doc.get("document_id")
     filename = upload_doc.get("filename", "")
-    file_path = os.path.join(UPLOAD_DIRECTORY, filename)
+
+    # Locate physical file: check <document_id>.pdf, then fallback to filename
+    file_path = None
+    if doc_id:
+        candidate_path = os.path.join(UPLOAD_DIRECTORY, f"{doc_id}.pdf")
+        if os.path.exists(candidate_path):
+            file_path = candidate_path
+
+    if not file_path and filename:
+        candidate_path = os.path.join(UPLOAD_DIRECTORY, filename)
+        if os.path.exists(candidate_path):
+            file_path = candidate_path
 
     file_size = None
-    if os.path.exists(file_path):
+    if file_path and os.path.exists(file_path):
         size_bytes = os.path.getsize(file_path)
         file_size = f"{size_bytes / (1024 * 1024):.2f} MB"
 
     page_count = None
     word_count = None
-    if filename.lower().endswith(".pdf") and os.path.exists(file_path):
+    if file_path and (filename.lower().endswith(".pdf") or file_path.endswith(".pdf")) and os.path.exists(file_path):
         try:
             reader = PdfReader(file_path)
             page_count = len(reader.pages)
@@ -337,12 +457,19 @@ async def get_document_preview(
     upload_date = upload_doc.get("upload_date")
     if isinstance(upload_date, datetime):
         upload_date = upload_date.isoformat()
+    processed_at = upload_doc.get("processed_at")
+    if isinstance(processed_at, datetime):
+        processed_at = processed_at.isoformat()
 
     return {
         "id": str(upload_doc["_id"]),
+        "document_id": doc_id,
         "filename": filename,
         "upload_date": upload_date,
+        "processed_at": processed_at,
         "status": upload_doc.get("status", "Processing"),
+        "chunks_stored": upload_doc.get("chunks_stored", 0),
+        "last_error": upload_doc.get("last_error"),
         "file_size": file_size,
         "page_count": page_count,
         "word_count": word_count,
@@ -439,6 +566,8 @@ async def get_quiz_results(current_user_email: str = Depends(get_current_user_em
     async for doc in cursor:
         dt = doc.get("date_taken")
         if isinstance(dt, datetime):
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
             dt = dt.isoformat()
         results.append({
             "id": str(doc.get("_id", "")),
@@ -456,7 +585,7 @@ async def get_quiz_results(current_user_email: str = Depends(get_current_user_em
 @app.get("/quiz-results/{user_id}")
 async def get_quiz_results_by_user_id(
     user_id: str,
-    x_internal_key: str = Header(None),
+    x_internal_key: Optional[str] = Header(default=None),
 ):
     """Return quiz history for a specific user (internal service access only)."""
     verify_internal_service_key(x_internal_key)
@@ -468,6 +597,8 @@ async def get_quiz_results_by_user_id(
     async for doc in cursor:
         dt = doc.get("date_taken")
         if isinstance(dt, datetime):
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
             dt = dt.isoformat()
         results.append({
             "id": str(doc.get("_id", "")),
@@ -480,3 +611,4 @@ async def get_quiz_results_by_user_id(
         })
 
     return results
+

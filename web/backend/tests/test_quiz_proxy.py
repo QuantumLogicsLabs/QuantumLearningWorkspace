@@ -89,6 +89,7 @@ class TestQuizProxyAndGrading(unittest.IsolatedAsyncioTestCase):
         quiz_sessions = get_quiz_sessions_collection()
         session = await quiz_sessions.find_one({"quiz_id": data["quiz_id"]})
         self.assertIsNotNone(session)
+        assert session is not None
         self.assertEqual(len(session["answers"]), 2)
         self.assertEqual(session["answers"][0]["answer"], "B")
 

@@ -107,7 +107,6 @@ def _match_doc(doc: Dict[str, Any], query: Optional[Dict[str, Any]]) -> bool:
     return True
 
 
-
 class InMemoryCollection:
     """In-memory collection fallback when MongoDB URI is absent or connection is unavailable."""
     def __init__(self, name: str):
@@ -211,13 +210,15 @@ _in_memory_db = InMemoryDatabase()
 
 
 def is_placeholder_uri(uri: str) -> bool:
-    """Check if MongoDB URI is empty or an unconfigured template."""
+    """Check if MongoDB URI is empty, placeholder, or standard dev default without active mongo."""
     return (
         not uri
         or "<username>" in uri
         or "<password>" in uri
         or "<cluster-url>" in uri
+        or (uri == "mongodb://localhost:27017" and os.getenv("USE_LOCAL_MONGO") != "1")
     )
+
 
 
 def get_client() -> Optional[AsyncIOMotorClient]:
@@ -273,3 +274,13 @@ def get_quiz_results_collection():
 def get_quiz_sessions_collection():
     """Return the quiz sessions collection used for server-side grading."""
     return get_database()["quiz_sessions"]
+
+
+def get_flashcard_reviews_collection():
+    """Return the flashcard_reviews collection for tracking user reviews."""
+    return get_database()["flashcard_reviews"]
+
+
+def get_flashcards_collection():
+    """Return the flashcards collection for saved/generated flashcards."""
+    return get_database()["flashcards"]

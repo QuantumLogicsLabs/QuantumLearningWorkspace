@@ -119,20 +119,29 @@
 
 /* Custom Scrollbar for messages */
 .chat-messages::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 
 .chat-messages::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
 }
 
 .chat-messages::-webkit-scrollbar-thumb {
-  background: var(--color-surface-active);
-  border-radius: 3px;
+  background: rgba(167, 139, 250, 0.5);
+  border-radius: 8px;
+  border: 1.5px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .chat-messages::-webkit-scrollbar-thumb:hover {
-  background: var(--color-primary-purple);
+  background: rgba(167, 139, 250, 0.85);
+  box-shadow: 0 0 8px rgba(167, 139, 250, 0.4);
+}
+
+.chat-messages::-webkit-scrollbar-thumb:active {
+  background: #c4b5fd;
 }
 
 .message-wrapper {

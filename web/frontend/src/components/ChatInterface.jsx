@@ -47,7 +47,7 @@ export default function ChatInterface({ onBack }) {
   const messagesEndRef = useRef(null);
 
   
-  const API_BASE = "http://localhost:5000";
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   // Fetch document uploads and poll status changes
   function fetchUploads() {
@@ -267,8 +267,8 @@ export default function ChatInterface({ onBack }) {
                 </div>
               )}
               
-              {/* Show sources if present */}
-              {msg.sources && msg.sources.length > 0 && (
+              {/* Show sources if present (except simple greetings) */}
+              {msg.sources && msg.sources.length > 0 && !/^(hello|hi|hey)[!,.\s]/i.test(msg.content.trim()) && (
                 <div className="message-sources">
                   <span className="sources-title">🔍 Sources:</span>
                   <div className="sources-list">

@@ -1,3 +1,4 @@
+from __future__ import annotations
 # 1. Import the specific AI Generators
 from quiz_generator.app.generators.mcq_generator import MCQGenerator
 from quiz_generator.app.generators.true_false_generator import TrueFalseGenerator

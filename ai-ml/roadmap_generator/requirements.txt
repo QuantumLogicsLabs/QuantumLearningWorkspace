@@ -1,0 +1,4 @@
+groq
+pydantic
+python-dotenv
+pytest

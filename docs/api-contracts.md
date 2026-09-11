@@ -195,17 +195,63 @@ python scripts/stream_client.py "Where does the Calvin cycle occur?"
 | `429` | Rate limit exceeded (`Retry-After` header) |
 | `503` | Engine not ready, or missing `GROQ_API_KEY` |
 
----
+
+
+-------
 
 ## Web backend (Team Pluto)
+**Service root:** `web/backend/`
+**Default local base URL:** `http://127.0.0.1:5000`
+**Run:**
+```bash
+cd web/backend
+uvicorn main:app --reload --port 5000
+```
+Env vars: see `web/backend/.env.example` (`MONGODB_URI`, `JWT_SECRET_KEY`, `INTERNAL_SERVICE_KEY`, `CHATBOT_SERVICE_URL`, `INGESTION_SERVICE_URL`, `QUIZ_SERVICE_URL`).
 
-See `web/backend/` — `GET /health`. Chatbot `/ask` lives only on the Mu service.
+Chatbot `/ask` lives only on the Mu service — Pluto's frontend calls it directly, not through this backend, except where noted below.
 
----
+### Auth
+| Endpoint | Method | Notes |
+|----------|--------|-------|
+| `/signup` | POST | `{email, password, full_name}` |
+| `/login` | POST | `{email, password}` → `{access_token}` (JWT, HS256, same `JWT_SECRET_KEY` Mu/Lambda verify) |
+| `/change-password` | POST | Requires `Authorization: Bearer <jwt>` |
+
+### Uploads
+| Endpoint | Method | Notes |
+|----------|--------|-------|
+| `/upload` | POST | Multipart PDF upload. Creates a MongoDB record (`status: Processing`), then forwards the file to Lambda's ingestion service (`Authorization: Bearer <jwt>` built server-side via `create_access_token`, not a client-supplied identity) as a background task. Status becomes `Ready` (with `chunks_stored`) or `Failed` (with `last_error`). |
+| `/uploads` | GET | Lists the authenticated user's own uploads only |
+| `/uploads/{upload_id}` | DELETE | Deletes the local file + MongoDB record, and calls Lambda's `DELETE /documents/{document_id}` (with a server-built JWT) to purge the vector store. Non-200 from that call is logged as a warning, not silently treated as success. |
+| `/uploads/{upload_id}/preview` | GET | — |
+
+### Internal service key
+Some Pluto endpoints (e.g. `GET /quiz-results/{user_id}`) are for service-to-service use only, protected by `X-Internal-Key` header verified against `INTERNAL_SERVICE_KEY` — separate from the JWT scheme above. Used when another service calls **into** Pluto; Pluto's own outbound calls to Lambda/Mu use JWT (see Uploads above).
+
+------
 
 ## Ingestion (Team Lambda)
+**Service root:** `ai-ml/ingestion/`
+**Default local base URL:** `http://127.0.0.1:8001`
+**Run:**
+```bash
+cd ai-ml
+uvicorn ingestion.main:app --reload --port 8001
+```
+Extracted document text must be treated as **untrusted data** when fed into RAG (see `docs/architecture.md` — Team Mu RAG security).
 
-See `ai-ml/ingestion/`. Extracted document text must be treated as **untrusted data** when fed into RAG (see `docs/architecture.md` — Team Mu RAG security).
+#### Authentication
+All endpoints below require `Authorization: Bearer <jwt>` (same scheme as `/ask` — HS256, `JWT_SECRET_KEY`, identity from the `sub` claim). `user_id` is never accepted from the client (form field, query param, or body) — it comes only from the verified token.
+
+| Endpoint | Method | Notes |
+|----------|--------|-------|
+| `/ingest/pdf` | POST | Multipart file upload |
+| `/ingest/youtube` | POST | `{url}` |
+| `/ingest/article` | POST | `{url}` |
+| `/documents/{document_id}` | DELETE | Purges all chunks for `document_id` from the shared ChromaDB collection. Idempotent — safe to call on an already-purged or nonexistent `document_id`. Called by Pluto's `/uploads/{upload_id}` DELETE. |
+
+All three ingest endpoints return `{document_id, title, chunks_stored, ...}` — `document_id` is generated server-side here and is **not** the same value as any `document_id` the caller may have used upstream (e.g. Pluto's own record); callers should persist the value returned in this response as the canonical ID for that content going forward.
 
 
 
@@ -226,8 +272,11 @@ uvicorn quiz_generator.app.main:app --reload --port 8002
 
 Interactive docs: [http://127.0.0.1:8002/docs](http://127.0.0.1:8002/docs)
 
-Env vars (root `.env`): `GROQ_API_KEY`, `PINECONE_API_KEY`, `MONGODB_URI`, `MONGODB_DB`, `MONGODB_COLLECTION`.
+Env vars (`ai-ml/.env`): `GROQ_API_KEY`, `JWT_SECRET_KEY`, `CHROMA_DB_PATH`.
+**Pipeline:** topic → embedding search in the shared ChromaDB collection (same store Lambda ingestion writes to and Mu reads from), scoped to the authenticated user's `user_id` → LLM generates structured questions per `quiz_type` → split into a public `questions` list (no answers) and a server-side `answers` list, matched by `question_id`.
 
+#### Authentication
+Requires `Authorization: Bearer <jwt>` (same scheme as `/ask`). `user_id` comes from the verified token and scopes retrieval to that user's own content only — never accepted from the request body.
 **Pipeline:** topic → embedding search (Pinecone) → full text resolve (MongoDB) → LLM generates structured questions per `quiz_type` → split into a public `questions` list (no answers) and a server-side `answers` list, matched by `question_id`.
 
 ---

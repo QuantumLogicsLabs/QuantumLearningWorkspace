@@ -18,6 +18,7 @@ space would have produced quietly wrong nearest-neighbor results.
 Both reads and writes now go through the one shared, normalized
 model in model.py.
 """
+from __future__ import annotations
 import os
 from pathlib import Path
 

@@ -1,7 +1,7 @@
-from app.detectors.weak_topic_detector import WeakTopicDetector
-from app.models.quiz_result import QuizResult
-from app.utils.data_loader import load_json_data
-from app.config import WEAK_TOPIC_THRESHOLD, MIN_TOPIC_ATTEMPTS
+from weak_topic_detection.app.detectors.weak_topic_detector import WeakTopicDetector
+from weak_topic_detection.app.models.quiz_result import QuizResult
+from weak_topic_detection.app.utils.data_loader import load_json_data
+from weak_topic_detection.app.config import WEAK_TOPIC_THRESHOLD, MIN_TOPIC_ATTEMPTS
 
 
 class WeakTopicService:

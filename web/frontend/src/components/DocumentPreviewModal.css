@@ -22,6 +22,27 @@
   position: relative;
 }
 
+.modal-card::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-card::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+}
+
+.modal-card::-webkit-scrollbar-thumb {
+  background: rgba(167, 139, 250, 0.5);
+  border-radius: 8px;
+  border: 1.5px solid transparent;
+  background-clip: padding-box;
+}
+
+.modal-card::-webkit-scrollbar-thumb:hover {
+  background: rgba(167, 139, 250, 0.85);
+  box-shadow: 0 0 8px rgba(167, 139, 250, 0.4);
+}
+
 .modal-card::before {
   content: "";
   position: absolute;
@@ -79,7 +100,7 @@
 
 .modal-file-title {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 14px;
   padding: 14px;
   background: var(--color-surface-hover);
@@ -90,16 +111,16 @@
 
 .modal-file-icon {
   font-size: 1.6rem;
+  line-height: 1.2;
 }
 
 .modal-filename {
   color: var(--color-text-primary);
   font-weight: 600;
   margin: 0 0 4px 0;
-  max-width: 380px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.4;
 }
 
 .modal-type-badge {

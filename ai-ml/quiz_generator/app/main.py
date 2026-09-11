@@ -6,6 +6,7 @@ Run from ai-ml/ (so the quiz_generator.* and embedding.* imports resolve):
 
 Interactive docs: http://127.0.0.1:8002/docs
 """
+from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware

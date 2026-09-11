@@ -1,5 +1,5 @@
 from collections import defaultdict
-from app.models.quiz_result import QuizResult
+from weak_topic_detection.app.models.quiz_result import QuizResult
 
 
 class WeakTopicDetector:
