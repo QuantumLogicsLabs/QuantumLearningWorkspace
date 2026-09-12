@@ -14,6 +14,7 @@ from youtube_transcript_api._errors import (
 )
 
 from ingestion.youtube.cleaner import clean_youtube_text
+from ingestion.youtube.whisper_fallback import transcribe_with_whisper
 from ingestion.youtube.exceptions import (
     InvalidYouTubeURLError,
     VideoUnavailableError,
@@ -67,17 +68,27 @@ def fetch_metadata(url: str) -> dict:
         "date": info.get("upload_date"),
     }
 
-def fetch_transcript(video_id: str, languages=("en",)) -> dict:
+
+def fetch_transcript(video_id: str, url: str, languages=("en",)) -> dict:
     """
-    Returns {"text": str, "language_code": str, "is_generated": bool}.
+    Returns {"text": str, "language_code": str | None, "is_generated": bool}.
+
+    Falls back to Whisper (downloading and transcribing audio) whenever
+    no usable caption track exists, instead of raising
+    TranscriptNotAvailableError.
 
     Raises:
         VideoUnavailableError: video is private/deleted/unreachable.
-        TranscriptNotAvailableError: video exists but has no usable transcript
-            (disabled by uploader, none in any language, or empty once fetched).
         TranscriptFetchError: transient upstream failure (rate limit, IP block).
     """
     api = YouTubeTranscriptApi()
+
+    def _whisper_result() -> dict:
+        return {
+            "text": transcribe_with_whisper(url),
+            "language_code": None,
+            "is_generated": False,
+        }
 
     # Step 1: find out what transcripts actually exist for this video.
     try:
@@ -87,12 +98,8 @@ def fetch_transcript(video_id: str, languages=("en",)) -> dict:
             f"The video {video_id} is unavailable, private, or has been removed.",
             video_id=video_id,
         ) from e
-    except TranscriptsDisabled as e:
-        raise TranscriptNotAvailableError(
-            f"The uploader has disabled transcripts/captions for video {video_id}.",
-            video_id=video_id,
-            details={"reason": "transcripts_disabled"},
-        ) from e
+    except TranscriptsDisabled:
+        return _whisper_result()
     except CouldNotRetrieveTranscript as e:
         # Covers RequestBlocked/IpBlocked/PoTokenRequired/YouTubeRequestFailed etc.
         raise TranscriptFetchError(
@@ -110,12 +117,7 @@ def fetch_transcript(video_id: str, languages=("en",)) -> dict:
     ]
 
     if not available:
-        raise TranscriptNotAvailableError(
-            f"No transcript (manual or auto-generated) exists for video {video_id} "
-            f"in any language.",
-            video_id=video_id,
-            details={"available_languages": []},
-        )
+        return _whisper_result()
 
     # Step 2: prefer a manually created transcript in a requested language,
     # then an auto-generated one in a requested language, then just take
@@ -140,12 +142,7 @@ def fetch_transcript(video_id: str, languages=("en",)) -> dict:
     merged = " ".join(segment.text for segment in fetched).strip()
 
     if not merged:
-        raise TranscriptNotAvailableError(
-            f"Transcript for video {video_id} (language={transcript.language_code}) "
-            f"fetched successfully but contained no text.",
-            video_id=video_id,
-            details={"available_languages": available},
-        )
+        return _whisper_result()
 
     return {
         "text": merged,
@@ -159,7 +156,7 @@ def ingest_youtube(url: str) -> dict:
 
     metadata = fetch_metadata(url)
 
-    transcript_data = fetch_transcript(video_id)
+    transcript_data = fetch_transcript(video_id, url)
 
     cleaned_text = clean_youtube_text(transcript_data["text"])
 
