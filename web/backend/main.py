@@ -98,13 +98,13 @@ async def process_file_ingestion(file_id: Any, document_id: str, filename: str, 
             with open(file_path, "rb") as f:
                 file_bytes = f.read()
 
-            async with httpx.AsyncClient(timeout=15) as client:
-                internal_token = create_access_token(email=user_id)
-                response = await client.post(
-                    f"{INGESTION_SERVICE_URL.rstrip('/')}/ingest/pdf",
-                    files={"file": (filename, file_bytes, "application/pdf")},
-                    headers={"Authorization": f"Bearer {internal_token}"},
-                )
+            async with httpx.AsyncClient(timeout=120) as client: 
+                internal_token = create_access_token(email=user_id) 
+                response = await client.post( 
+                    f"{INGESTION_SERVICE_URL.rstrip('/')}/ingest/pdf", 
+                    files={"file": (filename, file_bytes, "application/pdf")}, 
+                    headers={"Authorization": f"Bearer {internal_token}"}, 
+    ) 
 
             if response.status_code == 200:
                 try:
@@ -124,11 +124,11 @@ async def process_file_ingestion(file_id: Any, document_id: str, filename: str, 
                 )
 
         except Exception as e:
-            logger.warning(
-                f"Ingestion error for {filename} ({document_id}): {e}"
+            logger.exception(
+                f"Ingestion error for {filename} ({document_id})"
             )
             new_status = "Failed"
-            last_error = str(e)
+            last_error = f"{type(e).__name__}: {str(e)}"
     else:
         new_status = "Failed"
         last_error = "File not found on disk"
