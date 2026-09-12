@@ -124,11 +124,11 @@ async def process_file_ingestion(file_id: Any, document_id: str, filename: str, 
                 )
 
         except Exception as e:
-            logger.exception(
-                f"Ingestion error for {filename} ({document_id})"
-            )
+            error_details = f"{type(e).__name__}: {repr(e)}"
+            print(f"INGESTION_EXCEPTION: {error_details}", flush=True)
+            logger.error(f"INGESTION_EXCEPTION: {error_details}", flush=True)
             new_status = "Failed"
-            last_error = f"{type(e).__name__}: {str(e)}"
+            last_error = error_details
     else:
         new_status = "Failed"
         last_error = "File not found on disk"
