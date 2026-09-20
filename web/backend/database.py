@@ -284,3 +284,16 @@ def get_flashcard_reviews_collection():
 def get_flashcards_collection():
     """Return the flashcards collection for saved/generated flashcards."""
     return get_database()["flashcards"]
+
+
+async def init_db_indexes():
+    """Ensure database indexes are created for performance and unique constraints."""
+    try:
+        users = get_users_collection()
+        if hasattr(users, "create_index"):
+            await users.create_index("username", unique=True, sparse=True)
+            await users.create_index("email", unique=True)
+            logger.info("Database indexes initialized successfully (username unique/sparse).")
+    except Exception as e:
+        logger.warning(f"Note on database index initialization: {e}")
+

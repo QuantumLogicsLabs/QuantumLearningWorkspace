@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Flame, BarChart3 } from "lucide-react";
 import "./StudentCommandCenter.css";
@@ -11,6 +11,7 @@ export default function StudentCommandCenter({ onNavigate, files = [] }) {
     weakTopics: 0,
   });
   const [streakDays, setStreakDays] = useState(1);
+  const [streakActiveToday, setStreakActiveToday] = useState(false);
   const [goalPercent, setGoalPercent] = useState(25);
   const [goalsCompleted, setGoalsCompleted] = useState(1);
 
@@ -22,16 +23,24 @@ export default function StudentCommandCenter({ onNavigate, files = [] }) {
     return null;
   });
 
-  // Extract friendly display name from localStorage, email, or default to "Ashar"
+  // Extract friendly display name from user-scoped storage or email
   const getDisplayName = () => {
+    if (!userEmail) return "Student";
+    const userScoped = localStorage.getItem(`studymind_user_name_${userEmail}`);
+    if (userScoped && userScoped.trim()) return userScoped.trim();
+
     const saved = localStorage.getItem("studymind_user_name");
-    if (saved && saved.trim()) return saved.trim();
-    if (!userEmail) return "Ashar";
+    const cachedEmail = localStorage.getItem("studymind_cached_email");
+    if (saved && saved.trim() && cachedEmail === userEmail) return saved.trim();
+
     const raw = userEmail.split("@")[0];
     const clean = raw.replace(/[0-9_.-]/g, " ").trim();
-    if (!clean) return "Ashar";
+    if (!clean) {
+      return raw.charAt(0).toUpperCase() + raw.slice(1);
+    }
     return clean
       .split(" ")
+      .filter(Boolean)
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ");
   };
@@ -39,6 +48,7 @@ export default function StudentCommandCenter({ onNavigate, files = [] }) {
   const [displayName, setDisplayName] = useState(getDisplayName);
 
   useEffect(() => {
+    setDisplayName(getDisplayName());
     const handleProfileUpdate = () => {
       setDisplayName(getDisplayName());
     };
@@ -93,19 +103,24 @@ export default function StudentCommandCenter({ onNavigate, files = [] }) {
   // Fetch real review stats, live streak, and daily goal progress from backend
   useEffect(() => {
     let isMounted = true;
+    let midnightTimerId = null;
     const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
     async function fetchStatsAndActivity() {
       if (!token) return;
       try {
-        // 1. Live Study Pulse: Real Streak, Goal %, Mastery from MongoDB
-        const pulseRes = await fetch(`${API_BASE}/analytics/study-pulse`, {
+        // Detect user's local timezone (e.g. "Asia/Karachi", "America/New_York", etc.)
+        const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
+        // 1. Live Study Pulse: Real Streak, Goal %, Mastery from MongoDB scoped to local midnight
+        const pulseRes = await fetch(`${API_BASE}/analytics/study-pulse?tz=${encodeURIComponent(userTz)}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (pulseRes.ok) {
           const pulseData = await pulseRes.json();
           if (isMounted && pulseData) {
             if (pulseData.streak_days !== undefined) setStreakDays(pulseData.streak_days);
+            if (pulseData.streak_active_today !== undefined) setStreakActiveToday(pulseData.streak_active_today);
             if (pulseData.goal_percent !== undefined) setGoalPercent(pulseData.goal_percent);
             if (pulseData.goals_completed !== undefined) setGoalsCompleted(pulseData.goals_completed);
             setPulseStats({
@@ -124,6 +139,22 @@ export default function StudentCommandCenter({ onNavigate, files = [] }) {
             }
           }
         }
+
+        // Fetch user profile name from backend
+        try {
+          const meRes = await fetch(`${API_BASE}/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (meRes.ok) {
+            const meData = await meRes.json();
+            if (isMounted && meData?.name && meData.name.trim()) {
+              setDisplayName(meData.name.trim());
+              if (userEmail) {
+                localStorage.setItem(`studymind_user_name_${userEmail}`, meData.name.trim());
+              }
+            }
+          }
+        } catch {}
 
         // 2. If no local study activity recorded yet, check backend reviews history
         if (!localStorage.getItem("studymind_last_activity")) {
@@ -149,8 +180,24 @@ export default function StudentCommandCenter({ onNavigate, files = [] }) {
     }
 
     fetchStatsAndActivity();
+
+    // Auto-refresh when the clock strikes 12:00 AM midnight in the user's country
+    const scheduleMidnightCheck = () => {
+      const now = new Date();
+      const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 2);
+      const msUntilMidnight = Math.max(nextMidnight.getTime() - now.getTime(), 1000);
+      midnightTimerId = setTimeout(() => {
+        if (isMounted) {
+          fetchStatsAndActivity();
+          scheduleMidnightCheck();
+        }
+      }, msUntilMidnight);
+    };
+    scheduleMidnightCheck();
+
     return () => {
       isMounted = false;
+      if (midnightTimerId) clearTimeout(midnightTimerId);
     };
   }, [token]);
 
@@ -185,7 +232,7 @@ export default function StudentCommandCenter({ onNavigate, files = [] }) {
             <div className="streak-text-group">
               <span className="streak-count">{streakDays}-Day Streak</span>
               <span className="streak-sub">
-                {streakDays > 1 ? "Keep the flame alive!" : "Active today!"}
+                {streakActiveToday ? "Active today!" : "Keep the flame alive!"}
               </span>
             </div>
           </div>

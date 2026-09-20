@@ -343,6 +343,39 @@
   color: var(--color-text-secondary);
   line-height: 1.6;
   font-style: italic;
+  margin-bottom: 1rem;
+}
+
+.btn-launch-roadmap-from-results {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.7rem 1.4rem;
+  background: var(--gradient-primary, linear-gradient(135deg, #7c3aed, #2563eb));
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md, 0.5rem);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  margin-top: 0.25rem;
+}
+
+.btn-launch-roadmap-from-results:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.btn-launch-roadmap-from-results:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.roadmap-cta-hint {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin-top: 0.6rem;
+  font-style: italic;
 }
 
 /* Empty / Loading / Error States */

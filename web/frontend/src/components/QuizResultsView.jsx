@@ -1,11 +1,11 @@
-﻿import { useState, useEffect } from "react";
-import { BarChart3, AlertTriangle, Target, TrendingUp, CheckCircle2, XCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { BarChart3, AlertTriangle, Target, TrendingUp, CheckCircle2, XCircle, Map } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import "./QuizResultsView.css";
 import CustomSelect from "./CustomSelect.jsx";
 
-export default function QuizResultsView() {
+export default function QuizResultsView({ onLaunchRoadmap }) {
   const { token, handle401 } = useAuth();
   const { showToast } = useToast();
 
@@ -14,6 +14,7 @@ export default function QuizResultsView() {
   const [error, setError] = useState("");
   const [selectedResult, setSelectedResult] = useState(null);
   const [filterTopic, setFilterTopic] = useState("All");
+  const [isRoadmapLoading, setIsRoadmapLoading] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -264,13 +265,54 @@ export default function QuizResultsView() {
         )}
       </div>
 
-      {/* Topics to Review Placeholder */}
+      {/* Roadmap CTA — calls quiz-performance mode */}
       <div className="topics-to-review-card">
-        <h3><Target size={16} style={{ verticalAlign: "middle", marginRight: "6px" }} />Topics to Review</h3>
+        <h3><Map size={16} style={{ verticalAlign: "middle", marginRight: "6px" }} />Generate Your Study Roadmap</h3>
         <p className="placeholder-text">
-          This section will show recommended topics for improvement based on your quiz performance.
-          Team Lambda's weak-topic detection will populate this area soon.
+          Based on your quiz history, our AI will detect your weak topics and build a personalised study roadmap to help you improve.
         </p>
+        <button
+          className="btn-launch-roadmap-from-results"
+          disabled={isRoadmapLoading || results.length === 0}
+          onClick={async () => {
+            setIsRoadmapLoading(true);
+            try {
+              const headers = { "Content-Type": "application/json" };
+              if (token) headers["Authorization"] = `Bearer ${token}`;
+              const res = await fetch(`${API_BASE}/roadmap/generate-from-quiz-performance`, {
+                method: "POST",
+                headers,
+              });
+              const data = await res.json();
+              if (data && data.success && Array.isArray(data.next_steps) && data.next_steps.length > 0) {
+                if (onLaunchRoadmap) {
+                  onLaunchRoadmap({ next_steps: data.next_steps, subject: data.subject });
+                }
+              } else {
+                showToast(data.subject || "No weak topics detected yet — take more quizzes first!", "error");
+              }
+            } catch {
+              showToast("Could not generate roadmap right now. Please try again.", "error");
+            } finally {
+              setIsRoadmapLoading(false);
+            }
+          }}
+        >
+          {isRoadmapLoading ? (
+            <>
+              <span className="mini-action-spinner" style={{ marginRight: "8px" }}></span>
+              Generating Roadmap...
+            </>
+          ) : (
+            <>
+              <Map size={15} style={{ marginRight: "7px" }} />
+              Generate My Study Roadmap
+            </>
+          )}
+        </button>
+        {results.length === 0 && !loading && (
+          <p className="roadmap-cta-hint">Take at least one quiz to unlock roadmap generation.</p>
+        )}
       </div>
     </div>
   );

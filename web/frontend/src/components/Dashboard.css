@@ -2197,44 +2197,36 @@
    Topic Selection Modal (Scoped Document Flashcards)
    ========================================================== */
 .topic-modal-card {
-  max-width: 540px;
+  max-width: 460px;
   width: 92%;
-  padding: 24px 28px;
   max-height: 88vh;
-  overflow-y: auto;
+  padding: 0 !important;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(124, 58, 237, 0.15);
 }
 
 .topic-modal-header {
+  padding: 20px 22px 14px 22px;
   text-align: left;
-}
-
-.topic-modal-badge {
-  display: inline-block;
-  padding: 4px 10px;
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  border-radius: 20px;
-  color: #fcd34d;
-  font-size: 0.76rem;
-  font-weight: 700;
-  margin-bottom: 8px;
+  flex-shrink: 0;
 }
 
 .topic-modal-title {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: var(--color-text-primary);
-  margin: 0 0 6px 0;
+  margin: 0 0 4px 0;
 }
 
 .topic-modal-subtitle {
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   color: var(--color-text-secondary);
-  line-height: 1.45;
+  line-height: 1.4;
   margin: 0;
+  word-break: break-word;
 }
 
 .topic-doc-highlight {
@@ -2242,88 +2234,102 @@
   font-weight: 600;
 }
 
+.topic-modal-body {
+  padding: 0 22px 14px 22px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.topic-modal-body::-webkit-scrollbar {
+  width: 5px;
+}
+.topic-modal-body::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+.topic-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
 .topic-options-grid {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  max-height: 220px;
+  gap: 6px;
+  max-height: 200px;
   overflow-y: auto;
   padding-right: 4px;
 }
 
+.topic-options-grid::-webkit-scrollbar {
+  width: 5px;
+}
+.topic-options-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+.topic-options-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+}
+
 .topic-option-card {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 10px 14px;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--color-card-border);
-  border-radius: 10px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
+  user-select: none;
 }
 
 .topic-option-card:hover {
   background: rgba(124, 58, 237, 0.08);
   border-color: rgba(124, 58, 237, 0.35);
-  transform: translateX(2px);
 }
 
 .topic-option-card.topic-option-selected {
   background: rgba(245, 158, 11, 0.1);
   border-color: rgba(245, 158, 11, 0.5);
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.15);
 }
 
 .topic-card-radio {
-  padding-top: 3px;
+  display: flex;
+  align-items: center;
   flex-shrink: 0;
 }
 
 .radio-dot {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.3);
   display: block;
   position: relative;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .radio-dot.active {
   border-color: #f59e0b;
   background: #f59e0b;
-  box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
-}
-
-.topic-card-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
 }
 
 .topic-card-name {
-  font-size: 0.88rem;
-  font-weight: 600;
+  font-size: 0.84rem;
+  font-weight: 500;
   color: var(--color-text-primary);
-}
-
-.topic-card-hint {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  line-height: 1.35;
+  line-height: 1.3;
+  word-break: break-word;
 }
 
 .topic-custom-box {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.topic-custom-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
+  margin-top: 2px;
 }
 
 .topic-custom-input {
@@ -2333,14 +2339,15 @@
   border: 1px solid var(--color-input-border);
   border-radius: 8px;
   color: var(--color-text-primary);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   outline: none;
   transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 
 .topic-custom-input:focus {
   border-color: #f59e0b;
-  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15);
 }
 
 .topic-modal-settings {
@@ -2366,29 +2373,58 @@
 }
 
 .modal-setting-item select {
-  padding: 6px 10px;
+  padding: 7px 10px;
   background: var(--color-input-bg);
   border: 1px solid var(--color-input-border);
   border-radius: 6px;
   color: var(--color-text-primary);
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   cursor: pointer;
   outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.modal-setting-item select:focus {
+  border-color: #f59e0b;
+}
+
+.topic-modal-actions {
+  display: flex;
+  gap: 10px;
+  padding: 14px 22px 18px 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(15, 23, 42, 0.4);
+  flex-shrink: 0;
+}
+
+.topic-modal-actions .modal-btn-cancel {
+  flex: 1;
+  padding: 10px 16px;
+  font-size: 0.86rem;
+  border-radius: 8px;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .modal-btn-generate {
+  flex: 2;
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   color: #ffffff;
   border: none;
-  padding: 9px 18px;
+  padding: 10px 18px;
   border-radius: 8px;
-  font-size: 0.85rem;
+  font-size: 0.86rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
+  min-height: 42px;
 }
 
 .modal-btn-generate:hover:not(:disabled) {
@@ -2402,6 +2438,81 @@
   transform: none;
 }
 
+/* Mobile Responsiveness for Topic Modal */
+@media (max-width: 600px) {
+  .topic-modal-card {
+    width: 95% !important;
+    max-width: 420px;
+    max-height: 90vh;
+    border-radius: 14px;
+  }
+
+  .topic-modal-header {
+    padding: 16px 16px 10px 16px;
+  }
+
+  .topic-modal-title {
+    font-size: 1.1rem;
+  }
+
+  .topic-modal-subtitle {
+    font-size: 0.78rem;
+  }
+
+  .topic-modal-body {
+    padding: 0 16px 10px 16px;
+    gap: 10px;
+  }
+
+  .topic-options-grid {
+    max-height: 150px;
+    gap: 5px;
+  }
+
+  .topic-option-card {
+    padding: 8px 10px;
+  }
+
+  .topic-card-name {
+    font-size: 0.8rem;
+  }
+
+  .topic-custom-input {
+    padding: 7px 10px;
+    font-size: 0.8rem;
+  }
+
+  .topic-modal-settings {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .modal-setting-item label {
+    font-size: 0.72rem;
+  }
+
+  .modal-setting-item select {
+    padding: 6px 8px;
+    font-size: 0.78rem;
+  }
+
+  .topic-modal-actions {
+    padding: 12px 16px 14px 16px;
+    gap: 8px;
+  }
+
+  .topic-modal-actions .modal-btn-cancel {
+    padding: 8px 12px;
+    font-size: 0.82rem;
+    min-height: 38px;
+  }
+
+  .modal-btn-generate {
+    padding: 8px 12px;
+    font-size: 0.82rem;
+    min-height: 38px;
+  }
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Expandable Sidebar (desktop only — collapses back to icon-only on mobile)

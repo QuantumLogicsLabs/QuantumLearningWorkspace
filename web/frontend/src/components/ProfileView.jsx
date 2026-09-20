@@ -1,13 +1,19 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { CheckCircle2, Circle, FileText, MessageSquare, Zap, User, Lock, Palette, AlertTriangle, UserCog } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useToast } from "../context/ToastContext.jsx";
 import LogoutModal from "./LogoutModal.jsx";
+import DeleteAccountModal from "./DeleteAccountModal.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
 import "./ProfileView.css";
 
 export default function ProfileView({ onRequestLogout }) {
   const { token, userEmail, logout, handle401 } = useAuth();
+  const { showToast } = useToast() || {};
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const [profileData, setProfileData] = useState({
     email: userEmail || "user@example.com",
@@ -15,14 +21,16 @@ export default function ProfileView({ onRequestLogout }) {
     username: userEmail ? userEmail.split("@")[0] : "student",
     created_at: "July 2026",
     document_count: 0,
+    days_active: 1,
   });
   const [loading, setLoading] = useState(true);
 
   // Profile Edit States
   const [fullName, setFullName] = useState(
-    localStorage.getItem("studymind_user_name") || (userEmail ? userEmail.split("@")[0] : "Ashar")
+    (userEmail && localStorage.getItem(`studymind_user_name_${userEmail}`)) ||
+    (userEmail ? userEmail.split("@")[0] : "Student User")
   );
-  const [username, setUsername] = useState(userEmail ? userEmail.split("@")[0] : "ashar");
+  const [username, setUsername] = useState(userEmail ? userEmail.split("@")[0] : "student");
   const [profileMsg, setProfileMsg] = useState({ text: "", type: "" });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
@@ -75,8 +83,10 @@ export default function ProfileView({ onRequestLogout }) {
     if (!token) return;
     setLoading(true);
 
+    const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
     Promise.all([
-      fetch(`${API_BASE}/me`, {
+      fetch(`${API_BASE}/me?tz=${encodeURIComponent(userTz)}`, {
         headers: { Authorization: `Bearer ${token}` },
       }).then((res) => {
         if (handle401(res)) return null;
@@ -98,13 +108,14 @@ export default function ProfileView({ onRequestLogout }) {
             ? meData.question_count
             : getLocalQuestionCount();
 
+        const userScopedName = userEmail ? localStorage.getItem(`studymind_user_name_${userEmail}`) : null;
         const currentName =
           meData?.name ||
-          localStorage.getItem("studymind_user_name") ||
-          (userEmail ? userEmail.split("@")[0] : "Ashar");
+          userScopedName ||
+          (userEmail ? userEmail.split("@")[0] : "Student User");
         const currentUsername =
           meData?.username ||
-          (userEmail ? userEmail.split("@")[0] : "ashar");
+          (userEmail ? userEmail.split("@")[0] : "student");
 
         setProfileData({
           email: meData?.email || userEmail || "user@example.com",
@@ -113,6 +124,7 @@ export default function ProfileView({ onRequestLogout }) {
           created_at: meData?.created_at || "August 2026",
           document_count: liveCount,
           question_count: liveQuestions,
+          days_active: meData?.days_active || 1,
         });
         setFullName(currentName);
         setUsername(currentUsername);
@@ -165,6 +177,10 @@ export default function ProfileView({ onRequestLogout }) {
       setFullName(savedName);
       setUsername(savedUser);
       localStorage.setItem("studymind_user_name", savedName);
+      if (userEmail) {
+        localStorage.setItem(`studymind_user_name_${userEmail}`, savedName);
+        localStorage.setItem("studymind_cached_email", userEmail);
+      }
 
       setProfileMsg({ text: "✓ Display name updated successfully!", type: "success" });
       window.dispatchEvent(new Event("studymind_profile_updated"));
@@ -275,6 +291,61 @@ export default function ProfileView({ onRequestLogout }) {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!token) return;
+    setIsDeletingAccount(true);
+    setDeleteError("");
+    try {
+      const response = await fetch(`${API_BASE}/delete-account`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (handle401(response)) return;
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setDeleteError(data.detail || "Failed to delete account. Please try again.");
+        return;
+      }
+
+      setShowDeleteModal(false);
+
+      // Clean up all local storage artifacts for this user
+      try {
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("studymind_user_name");
+        localStorage.removeItem("studymind_cached_email");
+        localStorage.removeItem("studymind_last_activity");
+        localStorage.removeItem("studymind_chat_history");
+        if (userEmail) {
+          localStorage.removeItem(`studymind_user_name_${userEmail}`);
+          localStorage.removeItem(`studymind_chat_history_${userEmail}`);
+        }
+      } catch (e) {
+        // ignore storage errors
+      }
+
+      if (showToast) {
+        showToast("Your account has been deleted permanently.", "info");
+      }
+
+      if (onRequestLogout) {
+        onRequestLogout();
+      } else {
+        logout();
+      }
+    } catch (err) {
+      console.error("Delete account error:", err);
+      setDeleteError(err.message || "Network error while deleting account.");
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
+
   return (
     <div className="profile-view">
       {/* Profile Header Card */}
@@ -304,7 +375,7 @@ export default function ProfileView({ onRequestLogout }) {
         </div>
         <div className="stat-card">
           <div className="stat-icon"><Zap size={20} /></div>
-          <div className="stat-value">3</div>
+          <div className="stat-value">{profileData.days_active ?? 1}</div>
           <div className="stat-label">Days Active</div>
         </div>
       </div>
@@ -551,7 +622,10 @@ export default function ProfileView({ onRequestLogout }) {
           <p>Irreversible actions. Please be careful.</p>
           <button
             className="btn-delete-account"
-            onClick={() => alert("Are you sure? This will delete your account and all data.")}
+            onClick={() => {
+              setDeleteError("");
+              setShowDeleteModal(true);
+            }}
             type="button"
           >
             Delete Account
@@ -566,6 +640,19 @@ export default function ProfileView({ onRequestLogout }) {
           setShowLogoutModal(false);
           logout();
         }}
+      />
+
+      <DeleteAccountModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          if (!isDeletingAccount) {
+            setShowDeleteModal(false);
+            setDeleteError("");
+          }
+        }}
+        onConfirm={handleDeleteAccount}
+        isDeleting={isDeletingAccount}
+        errorMessage={deleteError}
       />
     </div>
   );

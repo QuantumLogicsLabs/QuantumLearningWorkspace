@@ -7,10 +7,12 @@ if _repo_root not in sys.path:
     sys.path.insert(0, _repo_root)
 
 import uuid
+import re
 import shutil
 import logging
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timezone, timedelta, date
+from zoneinfo import ZoneInfo
 from bson import ObjectId
 
 from fastapi import FastAPI, HTTPException, Header, UploadFile, File, Depends, BackgroundTasks
@@ -21,6 +23,8 @@ import httpx
 from web.backend.models import (
     SignupRequest,
     LoginRequest,
+    VerifyOtpRequest,
+    ResendOtpRequest,
     Upload,
     ChatMessage,
     ChangePasswordRequest,
@@ -28,12 +32,18 @@ from web.backend.models import (
     QuizResult,
     QuizResultRequest,
 )
+from web.backend.email_service import send_otp_email
+import random
+import secrets
 from web.backend.database import (
     get_users_collection,
     get_uploads_collection,
     get_chat_history_collection,
     get_quiz_results_collection,
+    get_quiz_sessions_collection,
     get_flashcard_reviews_collection,
+    get_flashcards_collection,
+    init_db_indexes,
 )
 from web.backend.auth_utils import (
     hash_password,
@@ -51,6 +61,11 @@ from web.backend.routes.roadmap import router as roadmap_router
 logger = logging.getLogger("uvicorn")
 
 app = FastAPI(title="StudyMind AI Backend")
+
+
+@app.on_event("startup")
+async def on_startup():
+    await init_db_indexes()
 
 origins = [
     "https://quantum-learning-workspace.vercel.app",
@@ -175,22 +190,179 @@ def health_check():
 @app.post("/signup")
 async def signup(request: SignupRequest):
     users = get_users_collection()
+    name_clean = request.name.strip()
+    username_clean = request.username.strip().lower()
     email_clean = request.email.strip().lower()
 
+    # ── Username format validation ───────────────────────────────────────────
+    if not re.match(r"^[a-zA-Z0-9_.-]{3,30}$", username_clean):
+        raise HTTPException(
+            status_code=400,
+            detail="Username must be 3-30 characters and contain only letters, numbers, underscores, dots, or hyphens."
+        )
+
+    # ── Username uniqueness check ─────────────────────────────────────────────
+    existing_username_user = await users.find_one({"username": username_clean})
+    if existing_username_user and existing_username_user.get("email") != email_clean:
+        raise HTTPException(status_code=400, detail="Username is already taken.")
+    # ─────────────────────────────────────────────────────────────────────────
+
     existing_user = await users.find_one({"email": email_clean})
-    if existing_user:
+    if existing_user and existing_user.get("is_verified") is not False:
         raise HTTPException(status_code=400, detail="Email already registered.")
 
-    hashed = hash_password(request.password)
+    # ── Password strength validation ──────────────────────────────────────────
+    pwd = request.password
+    errors = []
+    if len(pwd) < 8:
+        errors.append("at least 8 characters")
+    if not re.search(r"[A-Z]", pwd):
+        errors.append("at least one uppercase letter")
+    if not re.search(r"[a-z]", pwd):
+        errors.append("at least one lowercase letter")
+    if not re.search(r"[0-9]", pwd):
+        errors.append("at least one number")
+    if not re.search(r"[^A-Za-z0-9]", pwd):
+        errors.append("at least one special character (!@#$ etc.)")
+    if errors:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Password must have: {', '.join(errors)}."
+        )
+    # ─────────────────────────────────────────────────────────────────────────
 
-    new_user = {
+    hashed = hash_password(request.password)
+    today_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    otp_code = f"{secrets.randbelow(900000) + 100000}"
+    otp_expires = datetime.now(timezone.utc) + timedelta(minutes=10)
+
+    if existing_user and existing_user.get("is_verified") is False:
+        # User previously registered but didn't finish verification; update credentials, name, username & OTP
+        await users.update_one(
+            {"email": email_clean},
+            {
+                "$set": {
+                    "name": name_clean,
+                    "username": username_clean,
+                    "hashed_password": hashed,
+                    "otp_code": otp_code,
+                    "otp_expires_at": otp_expires,
+                    "otp_last_sent": datetime.now(timezone.utc),
+                }
+            }
+        )
+    else:
+        new_user = {
+            "name": name_clean,
+            "username": username_clean,
+            "email": email_clean,
+            "hashed_password": hashed,
+            "created_at": datetime.now(timezone.utc).strftime("%B %d, %Y"),
+            "login_dates": [today_iso],
+            "last_login": datetime.now(timezone.utc),
+            "is_verified": False,
+            "otp_code": otp_code,
+            "otp_expires_at": otp_expires,
+            "otp_last_sent": datetime.now(timezone.utc),
+        }
+        await users.insert_one(new_user)
+
+    # Send OTP email (and log to console for dev mode)
+    await send_otp_email(email_clean, otp_code)
+
+    return {
+        "message": "Verification code sent to your email.",
         "email": email_clean,
-        "hashed_password": hashed,
-        "created_at": datetime.now(timezone.utc).strftime("%B %d, %Y"),
+        "requires_verification": True,
     }
 
-    await users.insert_one(new_user)
-    return {"message": "User created successfully.", "email": email_clean}
+
+@app.post("/verify-otp")
+async def verify_otp(request: VerifyOtpRequest):
+    users = get_users_collection()
+    email_clean = request.email.strip().lower()
+    otp_clean = request.otp.strip()
+
+    user = await users.find_one({"email": email_clean})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    if user.get("is_verified") is True:
+        token = create_access_token(email=email_clean)
+        return {"message": "Email is already verified.", "access_token": token, "token_type": "bearer"}
+
+    stored_otp = str(user.get("otp_code", ""))
+    expires_at = user.get("otp_expires_at")
+    if expires_at and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    now_utc = datetime.now(timezone.utc)
+    if not stored_otp or stored_otp != otp_clean:
+        raise HTTPException(status_code=400, detail="Invalid verification code.")
+
+    if expires_at and expires_at < now_utc:
+        raise HTTPException(status_code=400, detail="Verification code has expired. Please click Resend Code.")
+
+    await users.update_one(
+        {"email": email_clean},
+        {
+            "$set": {
+                "is_verified": True,
+                "otp_code": None,
+                "otp_expires_at": None,
+            }
+        }
+    )
+
+    token = create_access_token(email=email_clean)
+    return {
+        "message": "Email verified successfully!",
+        "access_token": token,
+        "token_type": "bearer",
+    }
+
+
+@app.post("/resend-otp")
+async def resend_otp(request: ResendOtpRequest):
+    users = get_users_collection()
+    email_clean = request.email.strip().lower()
+
+    user = await users.find_one({"email": email_clean})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    if user.get("is_verified") is True:
+        raise HTTPException(status_code=400, detail="This account is already verified.")
+
+    # 60-second cooldown protection
+    last_sent = user.get("otp_last_sent")
+    if last_sent:
+        if last_sent.tzinfo is None:
+            last_sent = last_sent.replace(tzinfo=timezone.utc)
+        elapsed = (datetime.now(timezone.utc) - last_sent).total_seconds()
+        if elapsed < 60:
+            remaining = int(60 - elapsed)
+            raise HTTPException(
+                status_code=429,
+                detail=f"Please wait {remaining}s before requesting another code."
+            )
+
+    new_otp = f"{random.randint(100000, 999999)}"
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+
+    await users.update_one(
+        {"email": email_clean},
+        {
+            "$set": {
+                "otp_code": new_otp,
+                "otp_expires_at": expires_at,
+                "otp_last_sent": datetime.now(timezone.utc),
+            }
+        }
+    )
+
+    await send_otp_email(email_clean, new_otp)
+    return {"message": "A new verification code has been sent to your email."}
 
 
 @app.post("/login")
@@ -202,20 +374,114 @@ async def login(request: LoginRequest):
     if not user or not user.get("hashed_password"):
         raise HTTPException(status_code=401, detail="Invalid email or password.")
 
+    # ── Lockout check ─────────────────────────────────────────────────────────
+    lockout_until = user.get("lockout_until")
+    if lockout_until:
+        # Make lockout_until timezone-aware if it's naive
+        if lockout_until.tzinfo is None:
+            lockout_until = lockout_until.replace(tzinfo=timezone.utc)
+        now_utc = datetime.now(timezone.utc)
+        if lockout_until > now_utc:
+            remaining = int((lockout_until - now_utc).total_seconds())
+            mins = remaining // 60
+            secs = remaining % 60
+            raise HTTPException(
+                status_code=423,
+                detail=f"Account locked. Try again in {mins}m {secs}s."
+            )
+        else:
+            # Lockout expired — clear it
+            await users.update_one(
+                {"email": email_clean},
+                {"$set": {"failed_attempts": 0, "lockout_until": None}}
+            )
+    # ─────────────────────────────────────────────────────────────────────────
+
+    # ── Wrong password ────────────────────────────────────────────────────────
     if not verify_password(request.password, user["hashed_password"]):
-        raise HTTPException(status_code=401, detail="Invalid email or password.")
+        failed = user.get("failed_attempts", 0) + 1
+        MAX_ATTEMPTS = 5
+        if failed >= MAX_ATTEMPTS:
+            lock_time = datetime.now(timezone.utc) + timedelta(minutes=15)
+            await users.update_one(
+                {"email": email_clean},
+                {"$set": {"failed_attempts": failed, "lockout_until": lock_time}}
+            )
+            raise HTTPException(
+                status_code=423,
+                detail="Too many failed attempts. Account locked for 15 minutes."
+            )
+        remaining_attempts = MAX_ATTEMPTS - failed
+        await users.update_one(
+            {"email": email_clean},
+            {"$set": {"failed_attempts": failed}}
+        )
+        raise HTTPException(
+            status_code=401,
+            detail=f"Invalid password. {remaining_attempts} attempt{'s' if remaining_attempts != 1 else ''} remaining."
+        )
+    # ─────────────────────────────────────────────────────────────────────────
+
+    # ── Successful login — reset counters ─────────────────────────────────────
+    today_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    await users.update_one(
+        {"email": email_clean},
+        {
+            "$addToSet": {"login_dates": today_iso},
+            "$set": {
+                "last_login": datetime.now(timezone.utc),
+                "failed_attempts": 0,
+                "lockout_until": None,
+            },
+        }
+    )
+    # ── Check Email Verification ──────────────────────────────────────────────
+    if user.get("is_verified") is False:
+        raise HTTPException(
+            status_code=403,
+            detail="Email not verified. Please verify your email to continue."
+        )
+    # ─────────────────────────────────────────────────────────────────────────
 
     token = create_access_token(email=user["email"])
     return {"access_token": token, "token_type": "bearer"}
 
 
 @app.get("/me")
-async def get_my_profile(current_user_email: str = Depends(get_current_user_email)):
+async def get_my_profile(
+    tz: Optional[str] = None,
+    current_user_email: str = Depends(get_current_user_email),
+):
     users = get_users_collection()
     email_clean = current_user_email.strip().lower()
     user = await users.find_one({"email": email_clean})
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
+
+    # Determine user's local timezone
+    user_tz = timezone.utc
+    if tz and tz.strip():
+        try:
+            user_tz = ZoneInfo(tz.strip())
+        except Exception:
+            user_tz = timezone.utc
+
+    today_local = datetime.now(user_tz).strftime("%Y-%m-%d")
+
+    # Record login / active date
+    await users.update_one(
+        {"email": email_clean},
+        {
+            "$addToSet": {"login_dates": today_local},
+            "$set": {"last_active": datetime.now(timezone.utc)},
+        }
+    )
+
+    # Calculate distinct days active from login_dates
+    login_dates_list = user.get("login_dates") or []
+    login_dates_set = set(login_dates_list)
+    login_dates_set.add(today_local)
+    days_active = max(len(login_dates_set), 1)
 
     uploads = get_uploads_collection()
     upload_count = await uploads.count_documents({"user_id": email_clean})
@@ -231,6 +497,7 @@ async def get_my_profile(current_user_email: str = Depends(get_current_user_emai
         "username": user.get("username") or user["email"].split("@")[0],
         "created_at": str(created_at),
         "document_count": upload_count,
+        "days_active": days_active,
     }
 
 
@@ -267,88 +534,198 @@ async def update_profile(
     }
 
 
+@app.delete("/delete-account")
+async def delete_account(
+    current_user_email: str = Depends(get_current_user_email),
+):
+    """
+    Permanently delete the currently logged-in user's account and all associated data.
+    STRICT SECURITY: All operations are strictly filtered by current_user_email.
+    Other users' accounts and documents are never touched.
+    """
+    if not current_user_email or not current_user_email.strip():
+        raise HTTPException(status_code=400, detail="Invalid user identification.")
+
+    email_clean = current_user_email.strip().lower()
+
+    users = get_users_collection()
+    user = await users.find_one({"email": email_clean})
+    if not user:
+        raise HTTPException(status_code=404, detail="User account not found.")
+
+    uploads = get_uploads_collection()
+    chat_history = get_chat_history_collection()
+    quiz_results = get_quiz_results_collection()
+    quiz_sessions = get_quiz_sessions_collection()
+    flashcard_reviews = get_flashcard_reviews_collection()
+    flashcards = get_flashcards_collection()
+
+    # 1. Clean up only THIS user's uploaded files and vector embeddings
+    try:
+        user_uploads = await uploads.find({"user_id": email_clean}).to_list(length=None)
+        for doc in user_uploads:
+            # Purge vector embeddings for this specific doc
+            document_id = doc.get("vector_document_id") or doc.get("document_id") or str(doc.get("_id"))
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    purge_url = f"{INGESTION_SERVICE_URL.rstrip('/')}/documents/{document_id}"
+                    internal_token = create_access_token(email=email_clean)
+                    await client.delete(
+                        purge_url,
+                        headers={"Authorization": f"Bearer {internal_token}"},
+                        params={"user_id": email_clean},
+                    )
+            except Exception as e:
+                logger.warning(f"Vector purge for doc {document_id} during account deletion failed: {e}")
+
+            # Purge physical disk file if exists
+            possible_filenames = []
+            if doc.get("document_id"):
+                possible_filenames.append(f"{doc['document_id']}.pdf")
+            if doc.get("filename"):
+                possible_filenames.append(doc["filename"])
+
+            for fname in possible_filenames:
+                file_path = os.path.join(UPLOAD_DIRECTORY, fname)
+                if os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                    except Exception as e:
+                        logger.warning(f"Could not remove physical file {file_path}: {e}")
+
+        # Delete ONLY this user's uploads records
+        await uploads.delete_many({"user_id": email_clean})
+    except Exception as e:
+        logger.warning(f"Error cleaning uploads for user {email_clean}: {e}")
+
+    # 2. Clean up ONLY THIS user's chat history, quiz results, sessions, and flashcards
+    try:
+        await chat_history.delete_many({"user_id": email_clean})
+        await quiz_results.delete_many({"user_id": email_clean})
+        await quiz_sessions.delete_many({"user_id": email_clean})
+        await flashcard_reviews.delete_many({"user_id": email_clean})
+        await flashcards.delete_many({"user_id": email_clean})
+    except Exception as e:
+        logger.warning(f"Error cleaning activity data for user {email_clean}: {e}")
+
+    # 3. Delete ONLY THIS user's account from users collection
+    del_result = await users.delete_one({"email": email_clean})
+    logger.info(f"User account permanently deleted for {email_clean} (deleted_count={getattr(del_result, 'deleted_count', 1)})")
+
+    return {"message": "Account and all associated data deleted successfully."}
+
+
 @app.get("/analytics/study-pulse")
-async def get_study_pulse(current_user_email: str = Depends(get_current_user_email)):
+async def get_study_pulse(
+    tz: Optional[str] = None,
+    current_user_email: str = Depends(get_current_user_email),
+):
     email_clean = current_user_email.strip().lower()
     reviews_col = get_flashcard_reviews_collection()
     quiz_col = get_quiz_results_collection()
     uploads_col = get_uploads_collection()
 
-    now_utc = datetime.now(timezone.utc)
-    today_date = now_utc.date()
+    # Determine user's local country timezone (e.g. "Asia/Karachi", "America/New_York", etc.)
+    user_tz = timezone.utc
+    if tz and tz.strip():
+        try:
+            user_tz = ZoneInfo(tz.strip())
+        except Exception:
+            user_tz = timezone.utc
 
-    # 1. Collect all distinct activity dates
-    activity_dates = {today_date}  # Today is active since user is logged in
+    # Current time and date in the user's country / local timezone
+    # Exactly at midnight (12:00 AM) in their country, today_date advances to the new calendar day
+    now_user = datetime.now(user_tz)
+    today_date = now_user.date()
+    yesterday_date = today_date - timedelta(days=1)
+
+    # Helper to convert DB UTC datetimes / ISO strings to user's local date
+    def to_user_date(val: Any) -> Optional[date]:
+        if isinstance(val, str):
+            try:
+                val = datetime.fromisoformat(val.replace("Z", "+00:00"))
+            except Exception:
+                return None
+        if isinstance(val, datetime):
+            if val.tzinfo is None:
+                val = val.replace(tzinfo=timezone.utc)
+            return val.astimezone(user_tz).date()
+        return None
+
+    # 1. Collect all distinct study activity dates in user's local timezone
+    real_activity_dates: set = set()
 
     # Flashcard reviews dates
     async for r in reviews_col.find({"user_id": email_clean}, {"date_reviewed": 1, "topic": 1, "status": 1}):
-        dt = r.get("date_reviewed")
-        if isinstance(dt, datetime):
-            activity_dates.add(dt.date())
-        elif isinstance(dt, str):
-            try:
-                activity_dates.add(datetime.fromisoformat(dt.replace("Z", "+00:00")).date())
-            except Exception:
-                pass
+        d = to_user_date(r.get("date_reviewed"))
+        if d:
+            real_activity_dates.add(d)
 
     # Quiz results dates
     async for q in quiz_col.find({"user_id": email_clean}, {"timestamp": 1, "created_at": 1, "topic": 1}):
-        dt = q.get("timestamp") or q.get("created_at")
-        if isinstance(dt, datetime):
-            activity_dates.add(dt.date())
-        elif isinstance(dt, str):
-            try:
-                activity_dates.add(datetime.fromisoformat(dt.replace("Z", "+00:00")).date())
-            except Exception:
-                pass
+        d = to_user_date(q.get("timestamp") or q.get("created_at"))
+        if d:
+            real_activity_dates.add(d)
 
     # Uploads dates
     async for u in uploads_col.find({"user_id": email_clean}, {"upload_date": 1, "filename": 1}):
-        dt = u.get("upload_date")
-        if isinstance(dt, datetime):
-            activity_dates.add(dt.date())
-        elif isinstance(dt, str):
-            try:
-                activity_dates.add(datetime.fromisoformat(dt.replace("Z", "+00:00")).date())
-            except Exception:
-                pass
+        d = to_user_date(u.get("upload_date"))
+        if d:
+            real_activity_dates.add(d)
 
-    # 2. Compute Consecutive Day Streak
-    streak_count = 0
-    curr = today_date
-    while curr in activity_dates:
-        streak_count += 1
-        curr = curr - timedelta(days=1)
+    # 2. Compute Consecutive Day Streak with Local Midnight rollover:
+    # If the user has studied TODAY (local timezone):
+    #   Streak includes today and counts backward consecutively.
+    # If the user has NOT studied today yet:
+    #   Check if they studied YESTERDAY (local timezone).
+    #   If yes, the streak is alive from yesterday (prompting them to study today to maintain it).
+    #   If neither today nor yesterday has study activity, streak is 1 for an active session.
+    has_activity_today = today_date in real_activity_dates
+    has_activity_yesterday = yesterday_date in real_activity_dates
 
-    streak_days = max(streak_count, 1)
+    if has_activity_today:
+        streak_count = 0
+        curr = today_date
+        while curr in real_activity_dates:
+            streak_count += 1
+            curr = curr - timedelta(days=1)
+        streak_days = max(streak_count, 1)
+        streak_active_today = True
+    elif has_activity_yesterday:
+        streak_count = 0
+        curr = yesterday_date
+        while curr in real_activity_dates:
+            streak_count += 1
+            curr = curr - timedelta(days=1)
+        streak_days = max(streak_count, 1)
+        streak_active_today = False
+    else:
+        streak_days = 1
+        streak_active_today = False
 
-    # 3. Today's Milestones (Daily Goal)
-    m1_login = True  # Milestone 1: Daily login/active session
-    m2_flashcards = False  # Milestone 2: Studied flashcards today
-    m3_quiz = False  # Milestone 3: Took a quiz today
-    m4_extra = False  # Milestone 4: Uploaded file or completed >= 3 items today
-
-    today_start = datetime.combine(today_date, datetime.min.time(), tzinfo=timezone.utc)
+    # 3. Today's Milestones (Daily Goal) calculated from local midnight in user's timezone
+    local_midnight = datetime.combine(today_date, datetime.min.time(), tzinfo=user_tz)
+    today_start_utc = local_midnight.astimezone(timezone.utc)
 
     today_reviews = await reviews_col.count_documents({
         "user_id": email_clean,
-        "date_reviewed": {"$gte": today_start},
+        "date_reviewed": {"$gte": today_start_utc},
     })
-    if today_reviews > 0:
-        m2_flashcards = True
-        if today_reviews >= 3:
-            m4_extra = True
+    m1_login = True  # Milestone 1: Daily login/active session
+    m2_flashcards = today_reviews > 0
+    m3_quiz = False
+    m4_extra = today_reviews >= 3
 
     today_quizzes = await quiz_col.count_documents({
         "user_id": email_clean,
-        "timestamp": {"$gte": today_start},
+        "timestamp": {"$gte": today_start_utc},
     })
     if today_quizzes > 0:
         m3_quiz = True
 
     today_uploads = await uploads_col.count_documents({
         "user_id": email_clean,
-        "upload_date": {"$gte": today_start},
+        "upload_date": {"$gte": today_start_utc},
     })
     if today_uploads > 0:
         m4_extra = True
@@ -417,6 +794,7 @@ async def get_study_pulse(current_user_email: str = Depends(get_current_user_ema
 
     return {
         "streak_days": streak_days,
+        "streak_active_today": streak_active_today,
         "goal_percent": goal_percent,
         "goals_completed": milestones_done,
         "total_goals": 4,
@@ -424,6 +802,8 @@ async def get_study_pulse(current_user_email: str = Depends(get_current_user_ema
         "in_review": total_in_review,
         "weak_topics": weak_count,
         "last_studied": last_studied_payload,
+        "timezone": str(user_tz),
+        "local_date": today_date.isoformat(),
     }
 
 

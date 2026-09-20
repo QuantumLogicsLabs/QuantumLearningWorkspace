@@ -61,6 +61,15 @@ export function AuthProvider({ children }) {
   const login = (newToken) => {
     try {
       localStorage.setItem("auth_token", newToken);
+      const payload = parseJwt(newToken);
+      const newEmail = payload ? payload.sub : null;
+      const cachedEmail = localStorage.getItem("studymind_cached_email");
+      if (cachedEmail && cachedEmail !== newEmail) {
+        localStorage.removeItem("studymind_user_name");
+      }
+      if (newEmail) {
+        localStorage.setItem("studymind_cached_email", newEmail);
+      }
     } catch {
       // ignore
     }
@@ -75,6 +84,8 @@ export function AuthProvider({ children }) {
   const logoutExpired = () => {
     try {
       localStorage.removeItem("auth_token");
+      localStorage.removeItem("studymind_user_name");
+      localStorage.removeItem("studymind_cached_email");
     } catch {
       // ignore
     }
@@ -86,6 +97,8 @@ export function AuthProvider({ children }) {
   const logout = () => {
     try {
       localStorage.removeItem("auth_token");
+      localStorage.removeItem("studymind_user_name");
+      localStorage.removeItem("studymind_cached_email");
     } catch {
       // ignore
     }

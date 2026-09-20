@@ -349,3 +349,206 @@
   justify-content: center;
   gap: 0.5rem;
 }
+
+/* Password rules checklist */
+.pwd-checklist {
+  list-style: none;
+  padding: 0.5rem 0 0.25rem 0;
+  margin: 0 0 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.pwd-rule {
+  font-size: 0.78rem;
+  color: var(--color-error, #e55);
+  transition: color 0.2s;
+}
+
+.pwd-rule.met {
+  color: var(--color-success, #3a3);
+}
+
+/* Show/Hide password wrapper */
+.pwd-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pwd-input-wrapper .auth-input {
+  width: 100%;
+  padding-right: 2.4rem;
+}
+
+.pwd-eye-btn {
+  position: absolute;
+  right: 0.6rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted, #888);
+  display: flex;
+  align-items: center;
+  padding: 0;
+  line-height: 1;
+}
+
+.pwd-eye-btn:hover {
+  color: var(--color-primary, #6c63ff);
+}
+
+/* Confirm password match message */
+.pwd-match-msg {
+  font-size: 0.78rem;
+  color: var(--color-error, #e55);
+  margin: 0.2rem 0 0.4rem 0;
+  transition: color 0.2s;
+}
+
+.pwd-match-msg.met {
+  color: var(--color-success, #3a3);
+}
+
+/* Password Strength Indicator */
+.pwd-strength-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.4rem 0 0.2rem 0;
+}
+
+.pwd-strength-bar {
+  flex: 1;
+  height: 5px;
+  background: var(--color-border, #e0e0e0);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.pwd-strength-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+.pwd-strength-fill.level-1 { width: 33%; background: #e55353; }
+.pwd-strength-fill.level-2 { width: 66%; background: #f0a500; }
+.pwd-strength-fill.level-3 { width: 100%; background: #33a854; }
+
+.pwd-strength-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  min-width: 44px;
+}
+
+.pwd-strength-label.level-1 { color: #e55353; }
+.pwd-strength-label.level-2 { color: #f0a500; }
+.pwd-strength-label.level-3 { color: #33a854; }
+
+/* Password label row with suggest button */
+.pwd-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0;
+}
+
+.pwd-label-row .auth-label {
+  margin-bottom: 0;
+}
+
+.pwd-suggest-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--color-primary, #6c63ff);
+  font-weight: 500;
+  padding: 0;
+  transition: opacity 0.2s;
+}
+
+.pwd-suggest-btn:hover {
+  opacity: 0.75;
+}
+
+/* OTP Verification UI */
+.otp-verify-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: fadeIn 0.3s ease;
+}
+
+.otp-icon-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.otp-code-input {
+  font-size: 1.8rem !important;
+  letter-spacing: 0.5rem !important;
+  text-align: center !important;
+  font-family: 'Courier New', Courier, monospace !important;
+  font-weight: 700 !important;
+  padding: 0.6rem 0.5rem !important;
+  margin: 0.5rem 0 1rem 0 !important;
+  max-width: 240px;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.otp-resend-wrap {
+  margin-top: 1.25rem;
+  font-size: 0.85rem;
+}
+
+.otp-countdown {
+  color: var(--color-text-muted, #94a3b8);
+}
+
+.otp-resend-btn {
+  background: none;
+  border: none;
+  color: var(--color-primary, #6366f1);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.2s;
+}
+
+.otp-resend-btn:hover {
+  opacity: 0.75;
+  text-decoration: underline;
+}
+
+.otp-back-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted, #94a3b8);
+  font-size: 0.8rem;
+  cursor: pointer;
+  margin-top: 1.2rem;
+  padding: 0.25rem 0.5rem;
+  transition: color 0.2s;
+}
+
+.otp-back-btn:hover {
+  color: var(--color-text, #1e293b);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+

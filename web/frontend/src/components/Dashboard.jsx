@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { FileText, MessageSquare, Layers, Target, BarChart3, Map, Network, Brain, RefreshCw, BookOpen, X, AlertTriangle, Globe, Clock, CheckCircle2, Search, Send, ChevronDown, RotateCcw, ChevronsLeft, ChevronsRight } from "lucide-react";
@@ -43,9 +43,15 @@ function SidebarNav({ activeTab, setActiveTab, onRequestLogout }) {
 
   const { userEmail } = useAuth();
   const getInitialLetter = () => {
+    if (!userEmail) return "U";
+    const userScoped = localStorage.getItem(`studymind_user_name_${userEmail}`);
+    if (userScoped && userScoped.trim()) return userScoped.trim()[0].toUpperCase();
+
     const saved = localStorage.getItem("studymind_user_name");
-    if (saved && saved.trim()) return saved.trim()[0].toUpperCase();
-    return userEmail ? userEmail[0].toUpperCase() : "U";
+    const cachedEmail = localStorage.getItem("studymind_cached_email");
+    if (saved && saved.trim() && cachedEmail === userEmail) return saved.trim()[0].toUpperCase();
+
+    return userEmail[0].toUpperCase();
   };
   const [initial, setInitial] = useState(getInitialLetter);
 
@@ -132,9 +138,15 @@ function SidebarNav({ activeTab, setActiveTab, onRequestLogout }) {
 function TopBar({ activeTab, onNavigate }) {
   const { userEmail } = useAuth();
   const getInitialName = () => {
+    if (!userEmail) return "Student User";
+    const userScoped = localStorage.getItem(`studymind_user_name_${userEmail}`);
+    if (userScoped && userScoped.trim()) return userScoped.trim();
+
     const saved = localStorage.getItem("studymind_user_name");
-    if (saved && saved.trim()) return saved.trim();
-    return userEmail ? userEmail.split("@")[0] : "Student User";
+    const cachedEmail = localStorage.getItem("studymind_cached_email");
+    if (saved && saved.trim() && cachedEmail === userEmail) return saved.trim();
+
+    return userEmail.split("@")[0];
   };
   const [displayName, setDisplayName] = useState(getInitialName);
 
@@ -1038,103 +1050,93 @@ function DocumentsView({
             </button>
 
             <div className="topic-modal-header">
-              <div className="topic-modal-badge">
-                <span><Layers size={16} style={{ verticalAlign: "middle", marginRight: "6px" }} />Flashcard Topic Selector</span>
-              </div>
-              <h3 className="topic-modal-title">Select Topic to Study</h3>
+              <h3 className="topic-modal-title">Select Topic</h3>
               <p className="topic-modal-subtitle">
-                Found the following study topics in <strong className="topic-doc-highlight">"{topicModalFile.filename}"</strong>. Select which topic you want to generate cards for:
+                Choose a topic from <strong className="topic-doc-highlight">"{topicModalFile.filename}"</strong>:
               </p>
             </div>
 
-            <div className="topic-options-grid">
-              {/* Option 1: Entire Document Overview */}
-              <div
-                className={`topic-option-card ${selectedTopic === getDocCleanTopic(topicModalFile) && !customTopicInput ? "topic-option-selected" : ""}`}
-                onClick={() => {
-                  setSelectedTopic(getDocCleanTopic(topicModalFile));
-                  setCustomTopicInput("");
-                }}
-              >
-                <div className="topic-card-radio">
-                  <span className={`radio-dot ${selectedTopic === getDocCleanTopic(topicModalFile) && !customTopicInput ? "active" : ""}`}></span>
-                </div>
-                <div className="topic-card-info">
-                  <span className="topic-card-name"><BookOpen size={13} style={{ verticalAlign: "middle", marginRight: "4px" }} />Entire Document (Comprehensive Deck)</span>
-                  <span className="topic-card-hint">Covers all essential terms and summaries across the entire document</span>
-                </div>
-              </div>
-
-              {/* Extracted Specific Topics */}
-              {topicModalList.map((t, idx) => {
-                if (t === getDocCleanTopic(topicModalFile)) return null;
-                const isSelected = selectedTopic === t && !customTopicInput;
-                return (
-                  <div
-                    key={idx}
-                    className={`topic-option-card ${isSelected ? "topic-option-selected" : ""}`}
-                    onClick={() => {
-                      setSelectedTopic(t);
-                      setCustomTopicInput("");
-                    }}
-                  >
-                    <div className="topic-card-radio">
-                      <span className={`radio-dot ${isSelected ? "active" : ""}`}></span>
-                    </div>
-                    <div className="topic-card-info">
-                      <span className="topic-card-name"><Target size={13} style={{ verticalAlign: "middle", marginRight: "4px" }} />{t}</span>
-                      <span className="topic-card-hint">Deep-dive flashcards scoped specifically to this section</span>
-                    </div>
+            <div className="topic-modal-body">
+              <div className="topic-options-grid">
+                {/* Option 1: Entire Document */}
+                <div
+                  className={`topic-option-card ${selectedTopic === getDocCleanTopic(topicModalFile) && !customTopicInput ? "topic-option-selected" : ""}`}
+                  onClick={() => {
+                    setSelectedTopic(getDocCleanTopic(topicModalFile));
+                    setCustomTopicInput("");
+                  }}
+                >
+                  <div className="topic-card-radio">
+                    <span className={`radio-dot ${selectedTopic === getDocCleanTopic(topicModalFile) && !customTopicInput ? "active" : ""}`}></span>
                   </div>
-                );
-              })}
-            </div>
+                  <span className="topic-card-name"><BookOpen size={13} style={{ verticalAlign: "middle", marginRight: "6px" }} />Entire Document</span>
+                </div>
 
-            {/* Custom Topic write-in input */}
-            <div className="topic-custom-box">
-              <label className="topic-custom-label">
-                Or enter a custom subtopic from this document:
-              </label>
-              <input
-                type="text"
-                className="topic-custom-input"
-                placeholder="e.g. specific theorem, formula, or chapter..."
-                value={customTopicInput}
-                onChange={(e) => setCustomTopicInput(e.target.value)}
-                disabled={isModalGenerating}
-              />
-            </div>
-
-            {/* Options: Count & Difficulty */}
-            <div className="topic-modal-settings">
-              <div className="modal-setting-item">
-                <label>Number of Cards:</label>
-                <select
-                  value={cardCountChoice}
-                  onChange={(e) => setCardCountChoice(Number(e.target.value))}
-                  disabled={isModalGenerating}
-                >
-                  <option value={5}>5 Cards (Quick Review)</option>
-                  <option value={10}>10 Cards (Standard Study)</option>
-                  <option value={15}>15 Cards (Comprehensive Deck)</option>
-                </select>
+                {/* Extracted Specific Topics */}
+                {topicModalList.map((t, idx) => {
+                  if (t === getDocCleanTopic(topicModalFile)) return null;
+                  const isSelected = selectedTopic === t && !customTopicInput;
+                  return (
+                    <div
+                      key={idx}
+                      className={`topic-option-card ${isSelected ? "topic-option-selected" : ""}`}
+                      onClick={() => {
+                        setSelectedTopic(t);
+                        setCustomTopicInput("");
+                      }}
+                    >
+                      <div className="topic-card-radio">
+                        <span className={`radio-dot ${isSelected ? "active" : ""}`}></span>
+                      </div>
+                      <span className="topic-card-name"><Target size={13} style={{ verticalAlign: "middle", marginRight: "6px" }} />{t}</span>
+                    </div>
+                  );
+                })}
               </div>
 
-              <div className="modal-setting-item">
-                <label>Difficulty:</label>
-                <select
-                  value={difficultyChoice}
-                  onChange={(e) => setDifficultyChoice(e.target.value)}
+              {/* Custom Topic write-in input */}
+              <div className="topic-custom-box">
+                <input
+                  type="text"
+                  className="topic-custom-input"
+                  placeholder="Or type a custom topic..."
+                  value={customTopicInput}
+                  onChange={(e) => setCustomTopicInput(e.target.value)}
                   disabled={isModalGenerating}
-                >
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
+                />
+              </div>
+
+              {/* Options: Count & Difficulty */}
+              <div className="topic-modal-settings">
+                <div className="modal-setting-item">
+                  <label>Cards:</label>
+                  <select
+                    value={cardCountChoice}
+                    onChange={(e) => setCardCountChoice(Number(e.target.value))}
+                    disabled={isModalGenerating}
+                  >
+                    <option value={5}>5 Cards</option>
+                    <option value={10}>10 Cards</option>
+                    <option value={15}>15 Cards</option>
+                  </select>
+                </div>
+
+                <div className="modal-setting-item">
+                  <label>Difficulty:</label>
+                  <select
+                    value={difficultyChoice}
+                    onChange={(e) => setDifficultyChoice(e.target.value)}
+                    disabled={isModalGenerating}
+                  >
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                </div>
               </div>
             </div>
 
-            <div className="modal-actions">
+            <div className="modal-actions topic-modal-actions">
               <button
                 className="modal-btn-cancel"
                 onClick={() => setTopicModalFile(null)}
@@ -1150,10 +1152,10 @@ function DocumentsView({
                 {isModalGenerating ? (
                   <>
                     <span className="mini-action-spinner" style={{ marginRight: "6px" }}></span>
-                    Generating Cards...
+                    Generating...
                   </>
                 ) : (
-                  `Generate ${cardCountChoice} Flashcards`
+                  `Generate Flashcards`
                 )}
               </button>
             </div>
@@ -1758,7 +1760,7 @@ export default function Dashboard() {
           )}
           {activeTab === "flashcards" && <FlashcardsView initialContext={flashcardsContext} />}
           {activeTab === "quiz" && <QuizView initialContext={quizContext} onLaunchRoadmap={handleLaunchRoadmap} />}
-          {activeTab === "results" && <QuizResultsView />}
+          {activeTab === "results" && <QuizResultsView onLaunchRoadmap={handleLaunchRoadmap} />}
           {activeTab === "roadmap" && (
             <StudyRoadmapView onNavigate={setActiveTab} initialContext={roadmapContext} />
           )}
