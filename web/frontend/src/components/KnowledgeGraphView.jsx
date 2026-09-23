@@ -32,7 +32,7 @@ import {
   searchNodes,
 } from "./knowledgeGraphData.js";
 import "./KnowledgeGraphView.css";
-import "./KnowledgeGraphView.graph.css";
+
 
 const GRAPH_API_BASE = import.meta.env.VITE_GRAPH_API_BASE_URL || "http://localhost:8005";
 
@@ -73,7 +73,7 @@ function resolveBackground(el) {
   return "#ffffff";
 }
 
-// Colors come from CSS custom properties (see KnowledgeGraphView.graph.css) and
+// Colors come from CSS custom properties (see KnowledgeGraphView.css) and
 // the container's inherited text color, so the canvas follows the app theme.
 function readThemeColors(el) {
   const cs = getComputedStyle(el);
@@ -434,8 +434,8 @@ export default function KnowledgeGraphView({ onNavigate }) {
 
     const colors = readThemeColors(containerRef.current);
     cy.style(buildStylesheet(colors));
-    // Overlays (zoom buttons, legend, search list) use the same surface colour.
-    containerRef.current.closest(".kg-page")?.style.setProperty("--kg-surface", colors.surface);
+
+
 
     const degree = new Map();
     for (const e of visible.edges) {
@@ -636,7 +636,7 @@ export default function KnowledgeGraphView({ onNavigate }) {
   /* ── Render ── */
 
   return (
-    <div className="kg-page">
+    <div className={`kg-page ${hasGraph ? "kg-page-wide" : ""}`}>
       {/* ── Page Header ── */}
       <div className="kg-header">
         <div className="kg-title-group">
