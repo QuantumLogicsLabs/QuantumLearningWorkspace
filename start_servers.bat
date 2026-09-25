@@ -4,8 +4,10 @@ echo ============================================================
 echo   Team Pluto - Quantum Learning Microservices
 echo ============================================================
 
-set ROOT=G:\Intern\QuantumLearningWorkspace_New
+set ROOT=C:\QuantumLogicsLabs\QuantumLearningWorkspace
 set PYTHON=%ROOT%\web\backend\.venv\Scripts\python.exe
+if not exist "%PYTHON%" set PYTHON=%ROOT%\.venv\Scripts\python.exe
+if not exist "%PYTHON%" set PYTHON=python
 
 echo [CLEANUP] Killing any old Python/Node worker processes...
 taskkill /F /IM python.exe >nul 2>&1
