@@ -304,9 +304,8 @@
   font-weight: 700;
   margin: 0;
   color: var(--color-text-primary, #f9fafb);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .jump-topic {
@@ -405,8 +404,9 @@
 
 .pulse-badges-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.65rem;
+  width: 100%;
 }
 
 .pulse-badge-item {
@@ -414,13 +414,15 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0.65rem 0.5rem;
+  padding: 0.65rem 0.4rem;
   border-radius: var(--radius-md, 0.6rem);
   border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: center;
   position: relative;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .pulse-badge-item:hover {
@@ -445,6 +447,10 @@
   font-size: 0.72rem;
   font-weight: 600;
   color: var(--color-text-secondary, #9ca3af);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 /* Mastered Variant (Green) */
@@ -584,26 +590,195 @@
 
 @media (max-width: 768px) {
   .command-center-container {
-    padding: 1.25rem 1.4rem;
+    padding: 1.15rem 1rem;
+    margin-bottom: 1.25rem;
   }
 
   .command-center-header {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+    gap: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  .command-greeting-block {
+    min-width: 0;
+  }
+
+  .command-greeting-title {
+    font-size: 1.45rem;
+  }
+
+  .command-greeting-subtitle {
+    font-size: 0.88rem;
   }
 
   .command-metrics-cluster {
     width: 100%;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+  }
+
+  .streak-badge-card {
+    padding: 0.65rem 0.75rem;
+    gap: 0.6rem;
+    min-width: 0;
+  }
+
+  .streak-count {
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+
+  .streak-sub {
+    font-size: 0.7rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .goal-progress-card {
+    padding: 0.65rem 0.75rem;
+    gap: 0.65rem;
+    min-width: 0;
+  }
+
+  .progress-ring-wrapper {
+    width: 48px;
+    height: 48px;
+  }
+
+  .ring-percent {
+    font-size: 0.75rem;
+  }
+
+  .goal-title {
+    font-size: 0.88rem;
+    white-space: nowrap;
+  }
+
+  .goal-sub {
+    font-size: 0.7rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .command-center-grid {
+    gap: 1rem;
+    margin-top: 1rem;
   }
 
   .jump-back-card {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+    padding: 1rem;
+    gap: 0.9rem;
+  }
+
+  .jump-back-title {
+    font-size: 0.98rem;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
   }
 
   .jump-resume-btn {
     width: 100%;
     justify-content: center;
+  }
+
+  .mastery-pulse-card {
+    padding: 1rem 0.85rem;
+  }
+
+  .pulse-badges-row {
+    gap: 0.45rem;
+  }
+
+  .pulse-badge-item {
+    padding: 0.55rem 0.25rem;
+  }
+
+  .badge-value {
+    font-size: 1.15rem;
+  }
+
+  .badge-label {
+    font-size: 0.68rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .command-center-container {
+    padding: 0.95rem 0.8rem;
+    border-radius: var(--radius-lg, 0.9rem);
+  }
+
+  .command-greeting-title {
+    font-size: 1.25rem;
+  }
+
+  .command-metrics-cluster {
+    gap: 0.5rem;
+  }
+
+  .streak-badge-card {
+    padding: 0.55rem 0.6rem;
+    gap: 0.5rem;
+  }
+
+  .streak-count {
+    font-size: 0.85rem;
+  }
+
+  .streak-sub {
+    font-size: 0.66rem;
+  }
+
+  .goal-progress-card {
+    padding: 0.55rem 0.6rem;
+    gap: 0.5rem;
+  }
+
+  .progress-ring-wrapper {
+    width: 44px;
+    height: 44px;
+  }
+
+  .ring-percent {
+    font-size: 0.7rem;
+  }
+
+  .goal-title {
+    font-size: 0.82rem;
+  }
+
+  .goal-sub {
+    font-size: 0.66rem;
+  }
+
+  .mastery-pulse-card {
+    padding: 0.9rem 0.7rem;
+  }
+
+  .pulse-badges-row {
+    gap: 0.35rem;
+  }
+
+  .pulse-badge-item {
+    padding: 0.5rem 0.2rem;
+  }
+
+  .badge-value {
+    font-size: 1.05rem;
+  }
+
+  .badge-label {
+    font-size: 0.64rem;
   }
 }

@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Brain, FileText, PlayCircle, Globe, CheckCircle2, Inbox, CreditCard, Share2 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle.jsx";
 import "./LandingPage.css";
@@ -135,24 +135,24 @@ function FlashcardDemo() {
   };
 
   return (
-    <div className="flashcard-demo">
+    <div className="landing-flashcard-demo">
       <div
-        className={`flashcard ${flipped ? "flipped" : ""}`}
+        className={`landing-flashcard ${flipped ? "flipped" : ""}`}
         onClick={() => setFlipped((f) => !f)}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => e.key === "Enter" && setFlipped((f) => !f)}
       >
-        <div className="flashcard-face flashcard-front">
-          <span className="flashcard-label">Question</span>
+        <div className="landing-flashcard-face landing-flashcard-front">
+          <span className="landing-flashcard-label">Question</span>
           <p>{FLASHCARDS[index].q}</p>
         </div>
-        <div className="flashcard-face flashcard-back">
-          <span className="flashcard-label">Answer</span>
+        <div className="landing-flashcard-face landing-flashcard-back">
+          <span className="landing-flashcard-label">Answer</span>
           <p>{FLASHCARDS[index].a}</p>
         </div>
       </div>
-      <div className="flashcard-controls">
+      <div className="landing-flashcard-controls">
         <span>{index + 1} / {FLASHCARDS.length}</span>
         <button onClick={next}>Next card →</button>
       </div>
@@ -166,8 +166,12 @@ export default function LandingPage({ onNavigate = () => {} }) {
   useParticleCanvas(canvasRef);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 60);
-    window.addEventListener("scroll", onScroll);
+    const onScroll = () => {
+      const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+      setScrolled(scrollY > 20);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 

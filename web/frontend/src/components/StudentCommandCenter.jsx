@@ -243,7 +243,7 @@ export default function StudentCommandCenter({ onNavigate, files = [] }) {
           {/* Circular Goal Progress Ring */}
           <div className="goal-progress-card" title="Daily study goal progress">
             <div className="progress-ring-wrapper">
-              <svg className="progress-ring-svg" width="70" height="70">
+              <svg className="progress-ring-svg" width="70" height="70" viewBox="0 0 70 70">
                 <defs>
                   <linearGradient id="commandProgressGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#7c3aed" />

@@ -902,7 +902,9 @@ function DocumentsView({
                         ) : (
                           <>
                             <span className="action-icon"><Target size={14} /></span>
-                            <span className="action-label">Generate Quiz</span>
+                            <span className="action-label">
+                              <span className="action-label-prefix">Generate </span>Quiz
+                            </span>
                           </>
                         )}
                       </button>
@@ -920,7 +922,9 @@ function DocumentsView({
                         ) : (
                           <>
                             <span className="action-icon"><Layers size={14} /></span>
-                            <span className="action-label">Generate Flashcards</span>
+                            <span className="action-label">
+                              <span className="action-label-prefix">Generate </span>Flashcards
+                            </span>
                           </>
                         )}
                       </button>
@@ -939,7 +943,9 @@ function DocumentsView({
                         ) : (
                           <>
                             <span className="action-icon"><Map size={14} /></span>
-                            <span className="action-label">Generate Study Roadmap</span>
+                            <span className="action-label">
+                              <span className="action-label-prefix">Generate </span><span className="action-roadmap-full">Study </span>Roadmap
+                            </span>
                           </>
                         )}
                       </button>

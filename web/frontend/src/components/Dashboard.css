@@ -856,6 +856,11 @@
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
 }
 
+.action-label-prefix,
+.action-roadmap-full {
+  display: inline;
+}
+
 /* Spinner and Status Banners */
 .mini-action-spinner {
   width: 13px;
@@ -2115,16 +2120,30 @@
 
   .doc-actions-cluster {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
     width: 100%;
   }
 
   .btn-doc-action {
     width: 100%;
+    min-width: 0;
     justify-content: center;
-    padding: 8px 8px;
-    font-size: 0.78rem;
+    padding: 8px 6px;
+    font-size: 0.76rem;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .btn-doc-action .action-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .action-label-prefix {
+    display: none;
   }
 
   .chat-header-bar {
@@ -2626,5 +2645,32 @@
   }
   .sidebar-collapse-btn {
     display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .action-roadmap-full {
+    display: none;
+  }
+}
+
+@media (max-width: 400px) {
+  .file-list-card {
+    padding: 10px 8px;
+  }
+
+  .file-row {
+    padding: 10px 10px;
+    gap: 8px;
+  }
+
+  .doc-actions-cluster {
+    gap: 6px;
+  }
+
+  .btn-doc-action {
+    padding: 7px 4px;
+    font-size: 0.72rem;
+    gap: 4px;
   }
 }

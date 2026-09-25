@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useContext, useState, useCallback, useRef } from "react";
 import "./ToastContext.css";
 
 const ToastContext = createContext(null);
@@ -7,10 +7,29 @@ let idCounter = 0;
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
+  const recentToastsRef = useRef(new Map());
 
   const showToast = useCallback((message, type = "info", duration = 4000) => {
-    const id = idCounter++;
-    setToasts((prev) => [...prev, { id, message, type }]);
+    if (!message) return;
+
+    const key = `${type}:${message}`;
+    const now = Date.now();
+    const lastShown = recentToastsRef.current.get(key) || 0;
+
+    // Suppress duplicate identical toast triggered within 2000ms
+    if (now - lastShown < 2000) {
+      return;
+    }
+    recentToastsRef.current.set(key, now);
+
+    const id = ++idCounter;
+    setToasts((prev) => {
+      // Suppress if identical message is already in active toasts
+      if (prev.some((t) => t.message === message && t.type === type)) {
+        return prev;
+      }
+      return [...prev, { id, message, type }];
+    });
 
     if (duration > 0) {
       setTimeout(() => {

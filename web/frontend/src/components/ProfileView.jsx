@@ -582,7 +582,7 @@ export default function ProfileView({ onRequestLogout }) {
         {/* Appearance & Preferences Card */}
         <div className="profile-section-card full-width">
           <h3><Palette size={16} style={{ verticalAlign: "middle", marginRight: "6px" }} />Appearance &amp; Preferences</h3>
-          <div className="info-row">
+          <div className="info-row info-row-action">
             <div>
               <span className="info-label" style={{ display: "block", fontSize: "0.9rem", fontWeight: "600", color: "var(--color-text-primary)" }}>Theme</span>
               <span style={{ fontSize: "0.8rem", color: "var(--color-text-muted)" }}>Toggle between Dark (default) and Light theme</span>
@@ -594,7 +594,7 @@ export default function ProfileView({ onRequestLogout }) {
         {/* Session Card */}
         <div className="profile-section-card full-width">
           <h3>🚪 Session</h3>
-          <div className="info-row">
+          <div className="info-row info-row-action">
             <span className="info-label">You are currently logged in</span>
             <button
               className="btn-logout-profile"
@@ -634,14 +634,16 @@ export default function ProfileView({ onRequestLogout }) {
         </div>
       </div>
 
-      <LogoutModal
-        isOpen={showLogoutModal}
-        onClose={() => setShowLogoutModal(false)}
-        onConfirm={() => {
-          setShowLogoutModal(false);
-          logout();
-        }}
-      />
+      {!onRequestLogout && (
+        <LogoutModal
+          isOpen={showLogoutModal}
+          onClose={() => setShowLogoutModal(false)}
+          onConfirm={() => {
+            setShowLogoutModal(false);
+            logout();
+          }}
+        />
+      )}
 
       <DeleteAccountModal
         isOpen={showDeleteModal}

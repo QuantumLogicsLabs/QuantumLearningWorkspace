@@ -22,7 +22,9 @@ function AppContent() {
   const { login, isLoggedIn } = useAuth();
   const { showToast } = useToast() || {};
   const handleLoginSuccess = (accessToken) => {
-    login(accessToken);
+    if (accessToken && !localStorage.getItem("auth_token")) {
+      login(accessToken);
+    }
   };
 
   // Catch the redirect from Google/GitHub OAuth (backend sends us to /oauth-success?token=...)

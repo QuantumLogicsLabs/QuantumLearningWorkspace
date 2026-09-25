@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useRef } from "react";
 import { useToast } from "./ToastContext.jsx";
 
 const AuthContext = createContext(null);
@@ -24,6 +24,8 @@ function parseJwt(token) {
 export function AuthProvider({ children }) {
   const toastContext = useToast();
   const showToast = toastContext?.showToast || (() => {});
+  const lastLoginTimeRef = useRef(0);
+  const lastLogoutTimeRef = useRef(0);
 
   const [token, setToken] = useState(() => {
     try {
@@ -59,6 +61,13 @@ export function AuthProvider({ children }) {
   }, [token]);
 
   const login = (newToken) => {
+    if (!newToken) return;
+    const now = Date.now();
+    if (now - lastLoginTimeRef.current < 1500 && (token === newToken || localStorage.getItem("auth_token") === newToken)) {
+      return;
+    }
+    lastLoginTimeRef.current = now;
+
     try {
       localStorage.setItem("auth_token", newToken);
       const payload = parseJwt(newToken);
@@ -78,10 +87,16 @@ export function AuthProvider({ children }) {
     if (payload && payload.sub) {
       setUserEmail(payload.sub);
     }
-    showToast("Logged in successfully!", "success");
+    showToast("Logged in successfully!", "success", 2000);
   };
 
   const logoutExpired = () => {
+    const now = Date.now();
+    if ((!token && !localStorage.getItem("auth_token")) || (now - lastLogoutTimeRef.current < 1500)) {
+      return;
+    }
+    lastLogoutTimeRef.current = now;
+
     try {
       localStorage.removeItem("auth_token");
       localStorage.removeItem("studymind_user_name");
@@ -91,10 +106,16 @@ export function AuthProvider({ children }) {
     }
     setToken(null);
     setUserEmail(null);
-    showToast("Your session has expired - please log in again", "error");
+    showToast("Your session has expired - please log in again", "error", 2000);
   };
 
   const logout = () => {
+    const now = Date.now();
+    if ((!token && !localStorage.getItem("auth_token")) || (now - lastLogoutTimeRef.current < 1500)) {
+      return;
+    }
+    lastLogoutTimeRef.current = now;
+
     try {
       localStorage.removeItem("auth_token");
       localStorage.removeItem("studymind_user_name");
@@ -104,7 +125,7 @@ export function AuthProvider({ children }) {
     }
     setToken(null);
     setUserEmail(null);
-    showToast("Logged out successfully", "info");
+    showToast("Logged out successfully", "info", 2000);
   };
 
   const handle401 = (response) => {

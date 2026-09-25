@@ -1,28 +1,39 @@
-﻿import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import "./LogoutModal.css";
 
 export default function LogoutModal({ isOpen, onClose, onConfirm }) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setIsSubmitting(false);
+      return;
+    }
 
     const handleKeyDown = (e) => {
-      if (e.key === "Escape") {
+      if (e.key === "Escape" && !isSubmitting) {
         onClose();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, isSubmitting]);
 
   if (!isOpen) return null;
+
+  const handleConfirm = () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    onConfirm?.();
+  };
 
   return (
     <div
       className="logout-modal-backdrop"
       onClick={(e) => {
-        if (e.target === e.currentTarget) {
+        if (!isSubmitting && e.target === e.currentTarget) {
           onClose();
         }
       }}
@@ -35,6 +46,7 @@ export default function LogoutModal({ isOpen, onClose, onConfirm }) {
         <button
           className="logout-modal-close"
           onClick={onClose}
+          disabled={isSubmitting}
           aria-label="Close modal"
           type="button"
         >
@@ -72,17 +84,19 @@ export default function LogoutModal({ isOpen, onClose, onConfirm }) {
           <button
             className="btn-modal-cancel"
             onClick={onClose}
+            disabled={isSubmitting}
             type="button"
           >
             Cancel
           </button>
           <button
             className="btn-modal-confirm-logout"
-            onClick={onConfirm}
+            onClick={handleConfirm}
+            disabled={isSubmitting}
             type="button"
             autoFocus
           >
-            Log Out
+            {isSubmitting ? "Logging out..." : "Log Out"}
           </button>
         </div>
       </div>

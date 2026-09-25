@@ -302,7 +302,7 @@
   transform: rotateY(180deg);
 }
 
-.flashcard-face {
+.flashcard-scene .flashcard-face {
   position: absolute;
   top: 0;
   left: 0;
@@ -614,7 +614,7 @@
 /* ─── Responsive adjustments ────────────────────────────────────────────── */
 
 @media (max-width: 640px) {
-  .flashcard-face {
+  .flashcard-scene .flashcard-face {
     padding: 1.75rem 1.25rem;
     min-height: 290px;
   }

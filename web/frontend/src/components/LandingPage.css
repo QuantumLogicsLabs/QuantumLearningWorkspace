@@ -31,28 +31,34 @@ html, body {
   position: fixed;
   top: 0; left: 0; right: 0;
   display: flex; justify-content: space-between; align-items: center;
-  padding: 20px 32px;
-  z-index: 100;
-  transition: all 0.3s ease;
+  padding: 16px 32px;
+  z-index: 1000;
+  background: rgba(11, 11, 31, 0.82);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.25s ease;
   box-sizing: border-box;
 }
 .navbar.scrolled {
-  background: rgba(11, 11, 31, 0.9);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  padding: 14px 48px;
+  background: rgba(11, 11, 31, 0.96);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  padding: 12px 32px;
   border-bottom: 1px solid var(--border-soft);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
-.logo { display: flex; align-items: center; gap: 10px; }
+.logo { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .logo-icon {
-  width: 36px; height: 36px; border-radius: 10px;
+  width: 34px; height: 34px; border-radius: 10px;
   background: var(--gradient);
   display: flex; align-items: center; justify-content: center;
   font-size: 1.1rem;
+  flex-shrink: 0;
 }
-.logo-text { font-weight: 700; font-size: 1.15rem; }
+.logo-text { font-weight: 700; font-size: 1.15rem; white-space: nowrap; }
 .logo-text span { background: var(--gradient); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.nav-actions { display: flex; gap: 14px; align-items: center; }
+.nav-actions { display: flex; gap: 12px; align-items: center; flex-shrink: 0; }
 .nav-links {
   display: flex;
   gap: 32px;
@@ -73,13 +79,16 @@ html, body {
 }
 .btn-ghost {
   background: none; border: none; color: var(--text-secondary);
-  font-weight: 500; cursor: pointer; padding: 8px 14px;
+  font-weight: 500; cursor: pointer; padding: 7px 12px;
+  white-space: nowrap;
 }
 .btn-ghost:hover { color: var(--text-primary); }
 .btn-cta {
   background: var(--gradient); border: none; color: white;
-  padding: 10px 22px; border-radius: 8px; font-weight: 600;
+  padding: 8px 18px; border-radius: 8px; font-weight: 600;
   cursor: pointer; transition: transform 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .btn-cta:hover { transform: translateY(-2px); }
 
@@ -145,6 +154,17 @@ html, body {
   .bento-card.wide { grid-column: span 2; }
   .bento-card.tall { grid-column: span 1; grid-row: span 2; }
 }
+@media (max-width: 860px) {
+  .bento-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .bento-card.wide,
+  .bento-card.tall {
+    width: 100%;
+  }
+}
 .bento-icon { font-size: 1.8rem; margin-bottom: 16px; }
 .bento-card h3 { font-size: 1.3rem; margin-bottom: 10px; }
 .bento-card p { color: var(--text-secondary); line-height: 1.6; font-size: 0.95rem; }
@@ -152,37 +172,69 @@ html, body {
 .bento-card ul li { font-size: 0.88rem; font-weight: 500; color: var(--text-primary); }
 
 
-.flashcard-demo { margin-top: 20px; }
-.flashcard {
+.landing-flashcard-demo { margin-top: 18px; width: 100%; }
+.landing-flashcard {
   perspective: 1000px;
-  height: 140px;
+  transform-style: preserve-3d;
+  height: 130px;
   cursor: pointer;
   position: relative;
+  width: 100%;
 }
-.flashcard-face {
+.landing-flashcard-face {
   position: absolute; inset: 0;
-  display: flex; flex-direction: column; justify-content: center; gap: 8px;
-  padding: 20px;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  padding: 16px 18px !important;
   border-radius: 14px;
   backface-visibility: hidden;
-  transition: transform 0.5s ease;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
 }
-.flashcard-front { background: rgba(124,58,237,0.12); border: 1px solid rgba(124,58,237,0.3); }
-.flashcard-back {
+.landing-flashcard-front {
+  background: rgba(124, 58, 237, 0.12);
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  transform: rotateY(0deg);
+}
+.landing-flashcard-back {
   background: var(--gradient);
+  color: #ffffff;
   transform: rotateY(180deg);
 }
-.flashcard.flipped .flashcard-front { transform: rotateY(180deg); }
-.flashcard.flipped .flashcard-back { transform: rotateY(360deg); }
-.flashcard-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.7; }
-.flashcard-face p { font-size: 0.9rem; font-weight: 600; line-height: 1.4; }
-.flashcard-controls {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-top: 12px; font-size: 0.8rem; color: var(--text-secondary);
+.landing-flashcard.flipped .landing-flashcard-front { transform: rotateY(180deg); }
+.landing-flashcard.flipped .landing-flashcard-back { transform: rotateY(360deg); }
+.landing-flashcard-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--primary-light, #a78bfa);
+  font-weight: 600;
+  display: block;
 }
-.flashcard-controls button {
+.landing-flashcard-face p {
+  font-size: 0.92rem !important;
+  font-weight: 600 !important;
+  line-height: 1.4 !important;
+  color: #ffffff !important;
+  margin: 0 !important;
+  display: block !important;
+}
+.landing-flashcard-controls {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 10px; font-size: 0.8rem; color: var(--text-secondary);
+}
+.landing-flashcard-controls button {
   background: none; border: none; color: var(--primary-light);
-  font-weight: 600; cursor: pointer; font-size: 0.85rem;
+  font-weight: 600; cursor: pointer; font-size: 0.82rem;
+  padding: 4px 8px; border-radius: 6px;
+  transition: background 0.2s ease;
+}
+.landing-flashcard-controls button:hover {
+  background: rgba(124, 58, 237, 0.15);
 }
 
 
@@ -208,8 +260,106 @@ html, body {
 .footer-copy { opacity: 0.6; }
 
 @media (max-width: 640px) {
-  .hero-title { font-size: 2.2rem; }
-  .navbar, .footer { padding-left: 20px; padding-right: 20px; }
+  .navbar, .navbar.scrolled {
+    padding: 10px 14px;
+  }
+  .logo {
+    gap: 8px;
+  }
+  .logo-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+  }
+  .logo-text {
+    font-size: 0.98rem;
+  }
+  .nav-actions {
+    gap: 6px;
+  }
+  .landing .color-picker-wrap {
+    display: none;
+  }
+  .landing .theme-toggle-btn {
+    padding: 6px 8px;
+    height: 32px;
+    border-radius: 8px;
+  }
+  .btn-ghost {
+    padding: 6px 8px;
+    font-size: 0.82rem;
+  }
+  .btn-cta {
+    padding: 6px 12px;
+    font-size: 0.82rem;
+    border-radius: 6px;
+  }
+  .hero {
+    padding: 90px 16px 50px;
+    min-height: auto;
+  }
+  .hero-title {
+    font-size: 2rem;
+  }
+  .hero-subtitle {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+  .hero-tags {
+    margin-bottom: 24px;
+  }
+  .hero-actions {
+    gap: 10px;
+    width: 100%;
+  }
+  .hero-actions .btn-primary,
+  .hero-actions .btn-secondary {
+    width: 100%;
+    max-width: 280px;
+    padding: 12px 20px;
+  }
+  .features {
+    padding: 48px 14px;
+  }
+  .features-header {
+    margin-bottom: 28px;
+  }
+  .features-header h2 {
+    font-size: 1.55rem;
+  }
+  .features-header p {
+    font-size: 0.92rem;
+  }
+  .bento-card {
+    padding: 22px 16px;
+    border-radius: 16px;
+  }
+  .bento-card h3 {
+    font-size: 1.15rem;
+  }
+  .bento-card p {
+    font-size: 0.9rem;
+  }
+  .landing-flashcard {
+    height: 130px;
+  }
+  .landing-flashcard-face {
+    padding: 14px 16px;
+  }
+  .final-cta {
+    padding: 36px 14px 60px;
+  }
+  .cta-card {
+    padding: 32px 18px;
+    border-radius: 18px;
+  }
+  .cta-card h2 {
+    font-size: 1.5rem;
+  }
+  .footer {
+    padding: 24px 16px;
+  }
 }
 
 /* Light Theme Overrides for Landing Page */
@@ -221,15 +371,35 @@ html, body {
   --text-secondary: #475569;
 }
 
-[data-theme="light"] .navbar.scrolled {
-  background: rgba(255, 255, 255, 0.92);
+[data-theme="light"] .navbar {
+  background: rgba(248, 250, 252, 0.88);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-[data-theme="light"] .bento-card,
-[data-theme="light"] .flashcard-face {
+[data-theme="light"] .navbar.scrolled {
+  background: rgba(255, 255, 255, 0.98);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .bento-card {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .landing-flashcard-front {
+  background: #ffffff;
+  border-color: rgba(109, 40, 217, 0.2);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .landing-flashcard-front .landing-flashcard-label {
+  color: var(--primary);
+}
+
+[data-theme="light"] .landing-flashcard-front p {
+  color: #0f172a !important;
 }
 
 [data-theme="light"] .hero-badge {
