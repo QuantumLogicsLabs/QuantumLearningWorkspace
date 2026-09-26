@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
+import { Map, Target, AlertTriangle, ClipboardList, Clock, Search } from "lucide-react";
 import "./StudyRoadmapView.css";
 
 // Accent colours keyed to priority
@@ -23,18 +24,36 @@ function SkeletonStep() {
   );
 }
 
-export default function StudyRoadmapView({ onNavigate }) {
+export default function StudyRoadmapView({ onNavigate, initialContext }) {
   const { token } = useAuth();
   const [steps, setSteps] = useState([]);
-  const [subject, setSubject] = useState("Your Personalized Study Roadmap");
-  const [loading, setLoading] = useState(true);
+  const [subject, setSubject] = useState(initialContext?.subject || "Your Personalized Study Roadmap");
+  const [loading, setLoading] = useState(!initialContext?.next_steps);
   const [error, setError] = useState(null);
   const [hasActivity, setHasActivity] = useState(true);
+
+  // Custom topic generation state
+  const [topicInput, setTopicInput] = useState("");
+  const [isGeneratingTopic, setIsGeneratingTopic] = useState(false);
+  const [topicError, setTopicError] = useState("");
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
   useEffect(() => {
     let active = true;
+
+    if (initialContext && Array.isArray(initialContext.next_steps) && initialContext.next_steps.length > 0) {
+      const enriched = initialContext.next_steps.map((item, idx) => ({
+        ...item,
+        step_number: item.step_number ?? idx + 1,
+        accent: PRIORITY_ACCENT[item.priority?.toLowerCase()] ?? "#7c3aed",
+      }));
+      setSteps(enriched);
+      if (initialContext.subject) setSubject(initialContext.subject);
+      setHasActivity(true);
+      setLoading(false);
+      return;
+    }
 
     async function fetchRoadmap() {
       setLoading(true);
@@ -62,7 +81,6 @@ export default function StudyRoadmapView({ onNavigate }) {
           if (data.subject) setSubject(data.subject);
           setHasActivity(true);
         } else {
-          // Backend returned empty steps — user has no activity yet
           setSteps([]);
           setHasActivity(false);
         }
@@ -70,7 +88,6 @@ export default function StudyRoadmapView({ onNavigate }) {
         if (!active) return;
         setError("Could not load your roadmap right now. Using default suggestions.");
 
-        // Graceful fallback — show default curated steps so page is never blank
         setSteps([
           {
             step_number: 1,
@@ -106,7 +123,7 @@ export default function StudyRoadmapView({ onNavigate }) {
             target_tab: "flashcards",
           },
         ]);
-        setHasActivity(true); // Show steps even in fallback
+        setHasActivity(true);
       } finally {
         if (active) setLoading(false);
       }
@@ -114,18 +131,67 @@ export default function StudyRoadmapView({ onNavigate }) {
 
     fetchRoadmap();
     return () => { active = false; };
-  }, [token, API_BASE]);
+  }, [token, API_BASE, initialContext]);
 
   const handleAction = (targetTab) => {
     if (onNavigate && targetTab) onNavigate(targetTab);
   };
 
+  const handleGenerateTopicRoadmap = async (e) => {
+    e.preventDefault();
+    const cleanTopic = topicInput.trim();
+    if (!cleanTopic) {
+      setTopicError("Please enter a topic to generate a roadmap.");
+      return;
+    }
+
+    setTopicError("");
+    setIsGeneratingTopic(true);
+
+    try {
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`${API_BASE}/roadmap/generate-from-topic`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ topic: cleanTopic, step_count: 5 }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to generate roadmap for this topic");
+      }
+
+      const data = await res.json();
+      if (data && Array.isArray(data.next_steps) && data.next_steps.length > 0) {
+        const enriched = data.next_steps.map((item, idx) => ({
+          ...item,
+          step_number: item.step_number ?? idx + 1,
+          accent: PRIORITY_ACCENT[item.priority?.toLowerCase()] ?? "#7c3aed",
+        }));
+        setSteps(enriched);
+        setSubject(data.subject || `Roadmap: ${cleanTopic}`);
+        setHasActivity(true);
+        setError(null);
+        setTopicInput("");
+      } else {
+        setTopicError("No roadmap could be generated for this topic.");
+      }
+    } catch (err) {
+      setTopicError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setIsGeneratingTopic(false);
+    }
+  };
+
   return (
     <div className="roadmap-page">
-      {/* ── Page Header ─────────────────────────────────────── */}
       <header className="roadmap-page-header">
         <div className="roadmap-page-title-group">
-          <div className="roadmap-page-icon">🗺️</div>
+          <div className="roadmap-page-icon">
+            <Map size={24} strokeWidth={2.25} color="#ffffff" />
+          </div>
           <div>
             <h1 className="roadmap-page-heading">Study Roadmap</h1>
             <p className="roadmap-page-subtitle">
@@ -135,20 +201,60 @@ export default function StudyRoadmapView({ onNavigate }) {
         </div>
         {!loading && steps.length > 0 && (
           <div className="roadmap-subject-badge">
-            <span>🎯</span>
+            <Target size={14} />
             {steps.length} Steps Planned
           </div>
         )}
       </header>
 
-      {/* ── Error Banner ─────────────────────────────────────── */}
+      {/* Custom Topic Generator */}
+      <form className="roadmap-topic-form" onSubmit={handleGenerateTopicRoadmap}>
+        <label className="roadmap-topic-label" htmlFor="roadmap-topic-input">
+          Generate a roadmap for any topic:
+        </label>
+        <div className="roadmap-topic-input-row">
+          <input
+            id="roadmap-topic-input"
+            type="text"
+            className="roadmap-topic-input"
+            placeholder="e.g. Organic Chemistry, Linear Algebra, World War II..."
+            value={topicInput}
+            onChange={(e) => setTopicInput(e.target.value)}
+            disabled={isGeneratingTopic}
+          />
+          <button
+            type="submit"
+            className="roadmap-topic-generate-btn"
+            disabled={isGeneratingTopic || !topicInput.trim()}
+          >
+            {isGeneratingTopic ? (
+              <>
+                <span className="mini-action-spinner" style={{ marginRight: "6px" }}></span>
+                Generating...
+              </>
+            ) : (
+              <>
+                <Search size={15} />
+                Generate Roadmap
+              </>
+            )}
+          </button>
+        </div>
+        {topicError && (
+          <div className="roadmap-topic-error">
+            <AlertTriangle size={14} style={{ marginRight: "6px" }} />
+            {topicError}
+          </div>
+        )}
+      </form>
+
       {error && (
         <div className="roadmap-error-banner" role="alert">
-          ⚠️ {error}
+          <AlertTriangle size={16} />
+          {error}
         </div>
       )}
 
-      {/* ── Loading ──────────────────────────────────────────── */}
       {loading && (
         <ol className="roadmap-skeleton-list" aria-label="Loading roadmap…">
           <SkeletonStep />
@@ -157,10 +263,11 @@ export default function StudyRoadmapView({ onNavigate }) {
         </ol>
       )}
 
-      {/* ── Empty State — no activity yet ────────────────────── */}
       {!loading && !hasActivity && steps.length === 0 && (
         <div className="roadmap-empty-state" role="status">
-          <div className="roadmap-empty-icon">📋</div>
+          <div className="roadmap-empty-icon">
+            <ClipboardList size={44} strokeWidth={1.75} />
+          </div>
           <h2 className="roadmap-empty-title">No Roadmap Yet</h2>
           <p className="roadmap-empty-desc">
             Take a quiz to get your personalised study roadmap. The AI will identify your weak topics
@@ -171,12 +278,12 @@ export default function StudyRoadmapView({ onNavigate }) {
             type="button"
             onClick={() => handleAction("quiz")}
           >
-            🎯 Take a Quiz Now
+            <Target size={16} />
+            Take a Quiz Now
           </button>
         </div>
       )}
 
-      {/* ── Steps List ───────────────────────────────────────── */}
       {!loading && steps.length > 0 && (
         <ol className="roadmap-steps-list" aria-label="Study roadmap steps">
           {steps.map((step) => {
@@ -189,21 +296,19 @@ export default function StudyRoadmapView({ onNavigate }) {
                 className="roadmap-step-item"
                 style={{ "--step-accent": accent }}
               >
-                {/* Number circle */}
                 <div className="roadmap-step-number" aria-label={`Step ${step.step_number}`}>
                   {step.step_number}
                 </div>
 
-                {/* Content */}
                 <div className="roadmap-step-content">
                   <div className="roadmap-step-top">
                     <h3 className="roadmap-step-topic">{step.topic}</h3>
                     <span className={`roadmap-priority-pill ${priorityKey}`}>
                       {priorityKey === "high"
-                        ? "🔴 High"
+                        ? "High"
                         : priorityKey === "medium"
-                        ? "🟡 Medium"
-                        : "🟢 Recommended"}
+                        ? "Medium"
+                        : "Recommended"}
                     </span>
                   </div>
 
@@ -211,7 +316,8 @@ export default function StudyRoadmapView({ onNavigate }) {
 
                   <div className="roadmap-step-footer">
                     <span className="roadmap-step-duration">
-                      ⏱️ {step.estimated_duration || "1–2 days"}
+                      <Clock size={14} />
+                      {step.estimated_duration || "1–2 days"}
                     </span>
                     <button
                       type="button"

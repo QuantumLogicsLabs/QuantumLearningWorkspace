@@ -5,20 +5,20 @@ import uuid
 import logging
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
-from auth_utils import get_current_user_email, create_access_token
+from web.backend.auth_utils import get_current_user_email, create_access_token
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request, Depends, Header
-from models import (
+from web.backend.models import (
     GenerateQuizProxyRequest,
     SubmitQuizRequest,
     QuizResult,
 )
-from database import (
+from web.backend.database import (
     get_quiz_sessions_collection,
     get_quiz_results_collection,
 )
-from auth_utils import get_current_user_email
+from web.backend.auth_utils import get_current_user_email
 
 logger = logging.getLogger("uvicorn")
 router = APIRouter()
@@ -33,6 +33,7 @@ async def generate_quiz_proxy(
     body: GenerateQuizProxyRequest,
     req: Request,
 ):
+    print("QUIZ_FUNCTION_ENTERED", flush=True)
     """
     Proxy quiz generation to the AI-ML quiz generator service.
     Persists questions and correct answers in the database (quiz_sessions),
@@ -44,7 +45,7 @@ async def generate_quiz_proxy(
     user_id = "anonymous"
     if auth_header.startswith("Bearer "):
         try:
-            from auth_utils import decode_access_token
+            from web.backend.auth_utils import decode_access_token
             token = auth_header.split(" ")[1]
             payload_token = decode_access_token(token)
             if payload_token and "sub" in payload_token:
@@ -85,6 +86,8 @@ async def generate_quiz_proxy(
         "question_type": mapped_quiz_type,
         "difficulty": "medium",
     }
+    if body.document_id:
+        payload["document_id"] = body.document_id
 
     try:
         timeout = httpx.Timeout(
@@ -227,6 +230,7 @@ async def generate_quiz_proxy(
             ),
         )
     except Exception as e:
+        print(f"QUIZ_ERROR: {type(e).__name__}: {e}", flush=True)
         logger.error(f"Quiz service unexpected error: {e}")
         raise HTTPException(
             status_code=500,

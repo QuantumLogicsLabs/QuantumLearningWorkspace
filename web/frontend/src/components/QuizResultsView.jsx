@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
+import { BarChart3, AlertTriangle, Target, TrendingUp, CheckCircle2, XCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import "./QuizResultsView.css";
@@ -99,7 +100,7 @@ export default function QuizResultsView() {
     return (
       <div className="quiz-results-view">
         <div className="empty-state-card">
-          <span className="empty-icon">📊</span>
+          <BarChart3 className="empty-icon" size={40} strokeWidth={1.75} />
           <h3 className="empty-title">No Quiz Results Yet</h3>
           <p className="empty-subtitle">
             Take a quiz to see your results and track your progress
@@ -128,7 +129,7 @@ export default function QuizResultsView() {
     return (
       <div className="quiz-results-view">
         <div className="error-state-card">
-          <span className="error-icon">⚠️</span>
+          <AlertTriangle className="error-icon" size={18} />
           <p className="error-text">{error}</p>
           <button
             className="btn-retry"
@@ -146,17 +147,17 @@ export default function QuizResultsView() {
       {/* Stats Cards */}
       <div className="results-stats">
         <div className="stat-card">
-          <div className="stat-icon">🎯</div>
+          <div className="stat-icon"><Target size={22} /></div>
           <div className="stat-value">{stats.totalQuizzes}</div>
           <div className="stat-label">Quizzes Taken</div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon">📈</div>
+          <div className="stat-icon"><TrendingUp size={22} /></div>
           <div className="stat-value">{stats.avgScore}%</div>
           <div className="stat-label">Average Score</div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon">✓</div>
+          <div className="stat-icon"><CheckCircle2 size={22} /></div>
           <div className="stat-value">
             {stats.correctAnswers}/{stats.totalQuestions}
           </div>
@@ -240,9 +241,9 @@ export default function QuizResultsView() {
                       <div key={idx} className="detail-row">
                         <div className="detail-status">
                           {question.is_correct ? (
-                            <span className="status-correct">✓</span>
+                            <CheckCircle2 className="status-correct" size={16} />
                           ) : (
-                            <span className="status-incorrect">✗</span>
+                            <XCircle className="status-incorrect" size={16} />
                           )}
                         </div>
                         <div className="detail-content">
@@ -265,7 +266,7 @@ export default function QuizResultsView() {
 
       {/* Topics to Review Placeholder */}
       <div className="topics-to-review-card">
-        <h3>🎯 Topics to Review</h3>
+        <h3><Target size={16} style={{ verticalAlign: "middle", marginRight: "6px" }} />Topics to Review</h3>
         <p className="placeholder-text">
           This section will show recommended topics for improvement based on your quiz performance.
           Team Lambda's weak-topic detection will populate this area soon.

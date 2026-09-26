@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
+import { Network, Zap, RefreshCw, AlertTriangle, Brain, FileText, BarChart3, Search, X, Tag } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import "./KnowledgeGraphView.css";
@@ -153,7 +154,7 @@ export default function KnowledgeGraphView({ onNavigate }) {
       {/* ── Page Header ── */}
       <div className="kg-header">
         <div className="kg-title-group">
-          <div className="kg-icon-badge">🌐</div>
+          <div className="kg-icon-badge"><Network size={22} /></div>
           <div>
             <h2 className="kg-title">Knowledge Graph</h2>
             <p className="kg-subtitle">
@@ -169,7 +170,7 @@ export default function KnowledgeGraphView({ onNavigate }) {
             disabled={loading || rebuilding}
             title="Scan documents and recalculate graph connections"
           >
-            <span className={rebuilding ? "kg-spin" : ""}>⚡</span>
+            <Zap size={15} className={rebuilding ? "kg-spin" : ""} />
             {rebuilding ? "Rebuilding..." : "Rebuild Graph"}
           </button>
           <button
@@ -178,7 +179,7 @@ export default function KnowledgeGraphView({ onNavigate }) {
             disabled={loading || rebuilding}
             title="Refresh knowledge graph"
           >
-            <span className={loading ? "kg-spin" : ""}>🔄</span> Refresh
+            <RefreshCw size={15} className={loading ? "kg-spin" : ""} /> Refresh
           </button>
         </div>
       </div>
@@ -198,14 +199,14 @@ export default function KnowledgeGraphView({ onNavigate }) {
       {/* ── Error State ── */}
       {!loading && error && (
         <div className="kg-error-card">
-          <div className="kg-error-icon">⚠️</div>
+          <div className="kg-error-icon"><AlertTriangle size={28} /></div>
           <h3 className="kg-error-title">Unable to Load Knowledge Graph</h3>
           <p className="kg-error-message">{error}</p>
           <p className="kg-error-hint">
             Please ensure the Knowledge Graph microservice is running locally on port 8005.
           </p>
           <button className="kg-btn kg-btn-primary" onClick={fetchGraph}>
-            🔄 Retry Connection
+            <RefreshCw size={15} /> Retry Connection
           </button>
         </div>
       )}
@@ -214,7 +215,7 @@ export default function KnowledgeGraphView({ onNavigate }) {
       {!loading && !error && allEdges.length === 0 && (
         <div className="kg-empty-card">
           <div className="kg-empty-orb">
-            <span className="kg-empty-icon">🌐</span>
+            <Network className="kg-empty-icon" size={36} />
           </div>
           <h3 className="kg-empty-title">No Connections Discovered Yet</h3>
           <p className="kg-empty-desc">
@@ -236,14 +237,14 @@ export default function KnowledgeGraphView({ onNavigate }) {
               onClick={handleRebuild}
               disabled={rebuilding}
             >
-              <span className={rebuilding ? "kg-spin" : ""}>⚡</span>
+              <Zap size={15} className={rebuilding ? "kg-spin" : ""} />
               {rebuilding ? "Analyzing..." : "Scan Current Documents"}
             </button>
           </div>
 
           <div className="kg-features-grid">
             <div className="kg-feature-item">
-              <span className="kg-feature-icon">🧠</span>
+              <Brain className="kg-feature-icon" size={20} />
               <div className="kg-feature-content">
                 <h4>Vector Semantic Matching</h4>
                 <p>Calculates cosine similarity across high-dimensional document chunk embeddings.</p>
@@ -251,7 +252,7 @@ export default function KnowledgeGraphView({ onNavigate }) {
             </div>
 
             <div className="kg-feature-item">
-              <span className="kg-feature-icon">🏷️</span>
+              <Tag className="kg-feature-icon" size={20} />
               <div className="kg-feature-content">
                 <h4>Topic Overlap Extraction</h4>
                 <p>Identifies key intersecting keywords, terminology, and conceptual hierarchies.</p>
@@ -275,7 +276,7 @@ export default function KnowledgeGraphView({ onNavigate }) {
           {/* Stats Bar */}
           <div className="kg-stats-bar">
             <div className="kg-stat-item">
-              <span className="kg-stat-label">📄 Indexed Docs</span>
+              <span className="kg-stat-label"><FileText size={13} /> Indexed Docs</span>
               <span className="kg-stat-value">{totalNodes}</span>
             </div>
             <div className="kg-stat-item">
@@ -283,11 +284,11 @@ export default function KnowledgeGraphView({ onNavigate }) {
               <span className="kg-stat-value">{documentEdges.length}</span>
             </div>
             <div className="kg-stat-item">
-              <span className="kg-stat-label">🏷️ Topic Links</span>
+              <span className="kg-stat-label"><Tag size={13} /> Topic Links</span>
               <span className="kg-stat-value">{topicEdges.length}</span>
             </div>
             <div className="kg-stat-item">
-              <span className="kg-stat-label">📊 Avg Similarity</span>
+              <span className="kg-stat-label"><BarChart3 size={13} /> Avg Similarity</span>
               <span className="kg-stat-value kg-stat-highlight">{avgSimilarity}%</span>
             </div>
           </div>
@@ -305,18 +306,18 @@ export default function KnowledgeGraphView({ onNavigate }) {
                 className={`kg-filter-tab ${activeFilter === "document" ? "active" : ""}`}
                 onClick={() => setActiveFilter("document")}
               >
-                📄 Documents ({documentEdges.length})
+                <FileText size={14} /> Documents ({documentEdges.length})
               </button>
               <button
                 className={`kg-filter-tab ${activeFilter === "topic" ? "active" : ""}`}
                 onClick={() => setActiveFilter("topic")}
               >
-                🏷️ Topics ({topicEdges.length})
+                <Tag size={14} /> Topics ({topicEdges.length})
               </button>
             </div>
 
             <div className="kg-search-wrap">
-              <span className="kg-search-icon">🔍</span>
+              <Search className="kg-search-icon" size={15} />
               <input
                 type="text"
                 placeholder="Search documents or concepts..."
@@ -330,7 +331,7 @@ export default function KnowledgeGraphView({ onNavigate }) {
                   onClick={() => setSearchQuery("")}
                   title="Clear search"
                 >
-                  ✕
+                  <X size={14} />
                 </button>
               )}
             </div>
@@ -339,7 +340,7 @@ export default function KnowledgeGraphView({ onNavigate }) {
           {/* Cards List */}
           {filteredEdges.length === 0 ? (
             <div className="kg-no-results">
-              <p>🔍 No connections found matching "{searchQuery}"</p>
+              <p><Search size={14} style={{ verticalAlign: "middle", marginRight: "6px" }} />No connections found matching "{searchQuery}"</p>
               <button
                 className="kg-btn kg-btn-secondary"
                 onClick={() => {
@@ -362,7 +363,7 @@ export default function KnowledgeGraphView({ onNavigate }) {
                     {/* Top Row: Type & Similarity Badge */}
                     <div className="kg-card-header">
                       <span className={`kg-type-badge ${edge.node_type}`}>
-                        {edge.node_type === "document" ? "📄 Document Link" : "🏷️ Topic Link"}
+                        {edge.node_type === "document" ? (<><FileText size={12} /> Document Link</>) : (<><Tag size={12} /> Topic Link</>)}
                       </span>
 
                       <div className={`kg-score-badge ${tier}`}>
@@ -374,7 +375,7 @@ export default function KnowledgeGraphView({ onNavigate }) {
                     {/* Nodes Connected with glowing link */}
                     <div className="kg-nodes-row">
                       <div className="kg-node" title={edge.source_title}>
-                        <div className="kg-node-icon">📄</div>
+                        <div className="kg-node-icon"><FileText size={14} /></div>
                         <span className="kg-node-title">{edge.source_title}</span>
                       </div>
 
@@ -384,7 +385,7 @@ export default function KnowledgeGraphView({ onNavigate }) {
                       </div>
 
                       <div className="kg-node" title={edge.target_title}>
-                        <div className="kg-node-icon">📄</div>
+                        <div className="kg-node-icon"><FileText size={14} /></div>
                         <span className="kg-node-title">{edge.target_title}</span>
                       </div>
                     </div>

@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
+import { FileText, X, Search } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import "./DocumentPreviewModal.css";
 
@@ -51,9 +52,9 @@ export default function DocumentPreviewModal({ uploadId, onClose }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>📄 Document Preview</h3>
+          <h3><FileText size={17} style={{ verticalAlign: "middle", marginRight: "8px" }} />Document Preview</h3>
           <button className="modal-close-btn" onClick={onClose} title="Close">
-            ✕
+            <X size={16} />
           </button>
         </div>
 
@@ -64,7 +65,7 @@ export default function DocumentPreviewModal({ uploadId, onClose }) {
           {!loading && !error && preview && (
             <>
               <div className="modal-file-title">
-                <span className="modal-file-icon">📄</span>
+                <span className="modal-file-icon"><FileText size={22} /></span>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <p className="modal-filename" title={preview.filename}>
                     {preview.filename}
@@ -106,7 +107,7 @@ export default function DocumentPreviewModal({ uploadId, onClose }) {
               </div>
 
               <div className="metadata-section">
-                <h4>🔍 Extracted Metadata</h4>
+                <h4><Search size={14} style={{ verticalAlign: "middle", marginRight: "6px" }} />Extracted Metadata</h4>
                 <div className="info-grid">
                   <div className="info-item">
                     <span className="info-item-label">Pages</span>

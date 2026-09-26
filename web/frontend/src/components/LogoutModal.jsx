@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+﻿import { useEffect } from "react";
+import { X } from "lucide-react";
 import "./LogoutModal.css";
 
 export default function LogoutModal({ isOpen, onClose, onConfirm }) {
@@ -37,7 +38,7 @@ export default function LogoutModal({ isOpen, onClose, onConfirm }) {
           aria-label="Close modal"
           type="button"
         >
-          ✕
+          <X size={16} />
         </button>
 
         {/* Icon Header */}

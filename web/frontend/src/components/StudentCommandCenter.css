@@ -1,0 +1,609 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Student Command Center — Executive Learning Hub
+   Design tokens, glassmorphism, responsive micro-interactions
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.command-center-container {
+  background: var(--color-card-bg, #111827);
+  border: 1px solid var(--color-card-border, rgba(124, 58, 237, 0.2));
+  border-radius: var(--radius-xl, 1.25rem);
+  padding: 1.75rem 2rem;
+  box-shadow: 0 8px 30px var(--color-shadow, rgba(0, 0, 0, 0.25));
+  margin-bottom: 1.75rem;
+  position: relative;
+  overflow: hidden;
+  animation: commandFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  background-image: radial-gradient(
+    circle at 90% 10%,
+    rgba(124, 58, 237, 0.08) 0%,
+    transparent 60%
+  );
+}
+
+@keyframes commandFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Header Row: Greeting + Metrics ────────────────────────────── */
+.command-center-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--color-card-border, rgba(255, 255, 255, 0.08));
+}
+
+.command-greeting-block {
+  flex: 1;
+  min-width: 280px;
+}
+
+.command-greeting-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.3rem 0.8rem;
+  border-radius: 9999px;
+  background: rgba(124, 58, 237, 0.12);
+  color: var(--color-accent-purple, #a78bfa);
+  border: 1px solid rgba(124, 58, 237, 0.25);
+  margin-bottom: 0.6rem;
+}
+
+.live-sparkle {
+  animation: sparkleTwinkle 2.5s infinite ease-in-out;
+}
+
+@keyframes sparkleTwinkle {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.8; }
+  50% { transform: scale(1.25) rotate(15deg); opacity: 1; }
+}
+
+.command-greeting-title {
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1.25;
+  margin: 0 0 0.35rem 0;
+  color: var(--color-text-primary, #f9fafb);
+  letter-spacing: -0.02em;
+}
+
+.greeting-name {
+  background: linear-gradient(135deg, #a78bfa, #38bdf8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.command-greeting-subtitle {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary, #9ca3af);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.highlight-topic {
+  color: var(--color-accent-purple, #c084fc);
+  font-weight: 600;
+}
+
+/* ── Metrics Cluster: Streak & Progress Ring ──────────────────── */
+.command-metrics-cluster {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+/* Streak Badge Card */
+.streak-badge-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1.15rem;
+  background: rgba(249, 115, 22, 0.08);
+  border: 1px solid rgba(249, 115, 22, 0.25);
+  border-radius: var(--radius-lg, 0.85rem);
+  box-shadow: 0 2px 10px rgba(249, 115, 22, 0.1);
+  transition: all 0.2s ease;
+}
+
+.streak-badge-card:hover {
+  border-color: rgba(249, 115, 22, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(249, 115, 22, 0.2);
+}
+
+.streak-flame-icon {
+  font-size: 1.7rem;
+  animation: flameBounce 1.8s infinite ease-in-out;
+}
+
+@keyframes flameBounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.1); }
+}
+
+.streak-text-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.streak-count {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #fb923c;
+  line-height: 1.2;
+}
+
+.streak-sub {
+  font-size: 0.74rem;
+  color: var(--color-text-secondary, #9ca3af);
+}
+
+/* Goal Progress Card */
+.goal-progress-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.55rem 1.15rem;
+  background: var(--color-surface-hover, rgba(124, 58, 237, 0.06));
+  border: 1px solid var(--color-card-border, rgba(124, 58, 237, 0.2));
+  border-radius: var(--radius-lg, 0.85rem);
+  transition: all 0.2s ease;
+}
+
+.goal-progress-card:hover {
+  border-color: var(--color-accent-purple, #a78bfa);
+  transform: translateY(-2px);
+}
+
+.progress-ring-wrapper {
+  position: relative;
+  width: 70px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progress-ring-svg {
+  transform: rotate(-90deg);
+}
+
+.progress-ring-bg {
+  fill: transparent;
+  stroke: rgba(255, 255, 255, 0.08);
+}
+
+.progress-ring-fill {
+  fill: transparent;
+  stroke: url(#commandProgressGrad);
+  transition: stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.progress-ring-center-text {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ring-percent {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: var(--color-text-primary, #f9fafb);
+}
+
+.goal-text-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.goal-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--color-text-primary, #f9fafb);
+  line-height: 1.2;
+}
+
+.goal-sub {
+  font-size: 0.74rem;
+  color: var(--color-text-secondary, #9ca3af);
+}
+
+/* ── Bottom Grid: Jump Back In + Mastery Pulse ─────────────────── */
+.command-center-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 1.25rem;
+  margin-top: 1.35rem;
+}
+
+/* Jump Back In Card */
+.jump-back-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1.15rem 1.4rem;
+  background: linear-gradient(
+    135deg,
+    rgba(124, 58, 237, 0.12) 0%,
+    rgba(30, 27, 75, 0.35) 100%
+  );
+  border: 1px solid rgba(124, 58, 237, 0.35);
+  border-radius: var(--radius-lg, 0.9rem);
+  box-shadow: 0 4px 18px rgba(124, 58, 237, 0.12);
+  transition: all 0.25s ease;
+}
+
+.jump-back-card:hover {
+  border-color: rgba(124, 58, 237, 0.6);
+  box-shadow: 0 6px 24px rgba(124, 58, 237, 0.22);
+  transform: translateY(-2px);
+}
+
+.jump-back-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.jump-back-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #c084fc;
+}
+
+.pulsing-radar {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #a855f7;
+  box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.7);
+  animation: radarPulse 1.8s infinite;
+}
+
+@keyframes radarPulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(168, 85, 247, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(168, 85, 247, 0);
+  }
+}
+
+.jump-back-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-text-primary, #f9fafb);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jump-topic {
+  color: #38bdf8;
+}
+
+.jump-back-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary, #9ca3af);
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+.meta-pill {
+  color: #e0e7ff;
+  font-weight: 500;
+}
+
+.meta-dot {
+  opacity: 0.4;
+}
+
+.meta-time {
+  font-size: 0.76rem;
+  opacity: 0.85;
+}
+
+.jump-resume-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius-md, 0.65rem);
+  background: linear-gradient(135deg, #7c3aed, #ec4899);
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.jump-resume-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.5);
+}
+
+.jump-resume-btn:active {
+  transform: translateY(0);
+}
+
+.btn-arrow {
+  transition: transform 0.2s ease;
+}
+
+.jump-resume-btn:hover .btn-arrow {
+  transform: translateX(3px);
+}
+
+/* ── Mastery Pulse Mini Analytics Card ────────────────────────── */
+.mastery-pulse-card {
+  padding: 1.15rem 1.4rem;
+  background: var(--color-card-bg, #111827);
+  border: 1px solid var(--color-card-border, rgba(124, 58, 237, 0.2));
+  border-radius: var(--radius-lg, 0.9rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.pulse-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+}
+
+.pulse-icon {
+  font-size: 1.15rem;
+}
+
+.pulse-heading {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-text-secondary, #9ca3af);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.pulse-badges-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
+}
+
+.pulse-badge-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 0.5rem;
+  border-radius: var(--radius-md, 0.6rem);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  position: relative;
+}
+
+.pulse-badge-item:hover {
+  transform: translateY(-2px);
+}
+
+.badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-bottom: 0.25rem;
+}
+
+.badge-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 0.15rem;
+}
+
+.badge-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-secondary, #9ca3af);
+}
+
+/* Mastered Variant (Green) */
+.pulse-badge-item.mastered {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.2);
+}
+.pulse-badge-item.mastered:hover {
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(34, 197, 94, 0.4);
+}
+.dot-green {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+}
+.pulse-badge-item.mastered .badge-value {
+  color: #4ade80;
+}
+
+/* In Review Variant (Yellow/Amber) */
+.pulse-badge-item.in-review {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.2);
+}
+.pulse-badge-item.in-review:hover {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+.dot-yellow {
+  background: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+}
+.pulse-badge-item.in-review .badge-value {
+  color: #fbbf24;
+}
+
+/* Weak Topics Variant (Red) */
+.pulse-badge-item.weak {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+.pulse-badge-item.weak:hover {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+.dot-red {
+  background: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+}
+.pulse-badge-item.weak .badge-value {
+  color: #f87171;
+}
+
+/* ── Light Mode Adaptations ────────────────────────────────────── */
+[data-theme="light"] .command-center-container {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  background-image: radial-gradient(
+    circle at 90% 10%,
+    rgba(124, 58, 237, 0.04) 0%,
+    transparent 60%
+  );
+}
+
+[data-theme="light"] .command-center-header {
+  border-bottom-color: #f1f5f9;
+}
+
+[data-theme="light"] .command-greeting-title {
+  color: #0f172a;
+}
+
+[data-theme="light"] .greeting-name {
+  background: linear-gradient(135deg, #7c3aed, #0284c7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+[data-theme="light"] .command-greeting-subtitle {
+  color: #64748b;
+}
+
+[data-theme="light"] .streak-badge-card {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+[data-theme="light"] .goal-progress-card {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+[data-theme="light"] .progress-ring-bg {
+  stroke: #e2e8f0;
+}
+
+[data-theme="light"] .ring-percent,
+[data-theme="light"] .goal-title {
+  color: #0f172a;
+}
+
+[data-theme="light"] .jump-back-card {
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  border-color: #ddd6fe;
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.08);
+}
+
+[data-theme="light"] .jump-back-title {
+  color: #1e1b4b;
+}
+
+[data-theme="light"] .jump-topic {
+  color: #0284c7;
+}
+
+[data-theme="light"] .meta-pill {
+  color: #334155;
+}
+
+[data-theme="light"] .mastery-pulse-card {
+  background: #ffffff;
+  border-color: #e2e8f0;
+}
+
+[data-theme="light"] .pulse-heading {
+  color: #475569;
+}
+
+/* ── Responsive Breakpoints ───────────────────────────────────── */
+@media (max-width: 1024px) {
+  .command-center-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .command-center-container {
+    padding: 1.25rem 1.4rem;
+  }
+
+  .command-center-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .command-metrics-cluster {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .jump-back-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .jump-resume-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

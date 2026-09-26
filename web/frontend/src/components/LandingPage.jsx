@@ -1,24 +1,25 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
+import { Brain, FileText, PlayCircle, Globe, CheckCircle2, Inbox, CreditCard, Share2 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle.jsx";
 import "./LandingPage.css";
 
 const FEATURES = [
   {
-    icon: "📥",
+    icon: Inbox,
     title: "Multi-Source Ingestion",
     body: "Drop in PDFs, YouTube lectures, or web articles. StudyMind extracts the substance and discards the noise.",
     points: ["Semantic PDF parsing", "Auto-transcribed video lectures"],
     size: "wide",
   },
   {
-    icon: "🃏",
+    icon: CreditCard,
     title: "Instant Flashcards",
     body: "Every upload becomes spaced-repetition flashcards, tuned for what you're actually forgetting.",
     size: "tall",
     demo: "flashcard",
   },
   {
-    icon: "🕸️",
+    icon: Share2,
     title: "Connected Knowledge",
     body: "StudyMind links related concepts across everything you've uploaded, so ideas stop living in isolated tabs.",
     size: "wide",
@@ -174,7 +175,7 @@ export default function LandingPage({ onNavigate = () => {} }) {
     <div className="landing">
       <nav className={`navbar ${scrolled ? "scrolled" : ""}`}>
   <div className="logo">
-    <span className="logo-icon">🧠</span>
+    <Brain className="logo-icon" size={22} strokeWidth={2.25} />
     <span className="logo-text">StudyMind <span>AI</span></span>
   </div>
   <div className="nav-links">
@@ -206,9 +207,9 @@ export default function LandingPage({ onNavigate = () => {} }) {
             and turn it into flashcards and quizzes automatically.
           </p>
           <div className="hero-tags">
-            <span className="tag">📄 PDFs</span>
-            <span className="tag">▶️ Lecture videos</span>
-            <span className="tag">🌐 Web articles</span>
+            <span className="tag"><FileText size={14} /> PDFs</span>
+            <span className="tag"><PlayCircle size={14} /> Lecture videos</span>
+            <span className="tag"><Globe size={14} /> Web articles</span>
           </div>
           <div className="hero-actions">
             <button className="btn-primary" onClick={() => onNavigate("signup")}>
@@ -231,13 +232,13 @@ export default function LandingPage({ onNavigate = () => {} }) {
         <div className="bento-grid">
           {FEATURES.map((f) => (
             <div key={f.title} className={`bento-card ${f.size}`}>
-              <div className="bento-icon">{f.icon}</div>
+              <div className="bento-icon"><f.icon size={22} /></div>
               <h3>{f.title}</h3>
               <p>{f.body}</p>
               {f.points && (
                 <ul>
                   {f.points.map((p) => (
-                    <li key={p}>✓ {p}</li>
+                    <li key={p}><CheckCircle2 size={14} /> {p}</li>
                   ))}
                 </ul>
               )}

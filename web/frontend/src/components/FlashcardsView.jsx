@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+﻿import { useState, useEffect, useCallback } from "react";
+import { Layers, AlertTriangle, CheckCircle2, RotateCcw, RotateCw, Lightbulb, Trophy } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import "./FlashcardsView.css";
@@ -15,25 +16,73 @@ const QUICK_TOPICS = [
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
-export default function FlashcardsView() {
+export default function FlashcardsView({ initialContext }) {
   const { token, handle401 } = useAuth();
   const { showToast } = useToast();
 
   // Generation Form State
-  const [topicInput, setTopicInput] = useState("");
+  const [topicInput, setTopicInput] = useState(initialContext?.topic || "");
   const [numCards, setNumCards] = useState(5);
   const [difficulty, setDifficulty] = useState("medium");
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
+  // Source mode: generate from any topic, or scoped to an uploaded document
+  const [sourceMode, setSourceMode] = useState(initialContext?.document_id ? "document" : "topic");
+  const [docFiles, setDocFiles] = useState([]);
+  const [selectedFileId, setSelectedFileId] = useState(initialContext?.document_id || "");
+
+  useEffect(() => {
+    if (!token) return;
+    fetch(`${API_BASE}/uploads`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data)) setDocFiles(data);
+      })
+      .catch(() => {});
+  }, [token]);
+
+  const getCleanTopicFromFilename = (filename) => {
+    if (!filename) return "";
+    const withoutExt = filename.replace(/\.[^/.]+$/, "");
+    return withoutExt.replace(/[_-]/g, " ").replace(/\s+/g, " ").trim();
+  };
+
+  const handleSelectDocFile = (fileId) => {
+    setSelectedFileId(fileId);
+    const file = docFiles.find((f) => String(f.id) === String(fileId));
+    if (file) {
+      setTopicInput(getCleanTopicFromFilename(file.filename));
+    }
+  };
+
+  const handleSourceModeChange = (mode) => {
+    setSourceMode(mode);
+    if (mode === "topic") {
+      setSelectedFileId("");
+    }
+  };
+
   // Flashcards Study Deck State
-  const [currentTopic, setCurrentTopic] = useState("");
-  const [cards, setCards] = useState([]);
+  const [currentTopic, setCurrentTopic] = useState(initialContext?.topic || "");
+  const [cards, setCards] = useState(initialContext?.cards || []);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [cardReviews, setCardReviews] = useState({}); // { [cardId]: 'known' | 'still_learning' }
   const [isSavingReview, setIsSavingReview] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+
+  useEffect(() => {
+    if (initialContext && Array.isArray(initialContext.cards) && initialContext.cards.length > 0) {
+      setCards(initialContext.cards);
+      setCurrentTopic(initialContext.topic || "Document Study Deck");
+      if (initialContext.topic) setTopicInput(initialContext.topic);
+      setCurrentIndex(0);
+      setIsFlipped(false);
+      setCardReviews({});
+      setIsCompleted(false);
+    }
+  }, [initialContext]);
 
   // Generate Flashcards Handler
   const handleGenerateFlashcards = async (e) => {
@@ -59,8 +108,9 @@ export default function FlashcardsView() {
         body: JSON.stringify({
           topic: chosenTopic,
           num_cards: Number(numCards),
-          difficulty,
-        }),
+            difficulty,
+            ...(sourceMode === "document" && selectedFileId ? { document_id: selectedFileId } : {}),
+          }),
       });
 
       if (response.status === 401) {
@@ -84,6 +134,22 @@ export default function FlashcardsView() {
       setIsFlipped(false);
       setCardReviews({});
       setIsCompleted(false);
+
+      try {
+        localStorage.setItem(
+          "studymind_last_activity",
+          JSON.stringify({
+            topic: data.topic || chosenTopic,
+            type: "flashcards",
+            subText: `${data.cards.length} Flashcards session`,
+            targetTab: "flashcards",
+            timestamp: Date.now(),
+          })
+        );
+      } catch (e) {
+        // Ignore localStorage quota errors
+      }
+
       showToast(`Generated ${data.cards.length} flashcards for "${data.topic || chosenTopic}"!`, "success");
     } catch (err) {
       console.error("Flashcards generation error:", err);
@@ -254,7 +320,7 @@ export default function FlashcardsView() {
       {/* ─── Topic Setup Section ────────────────────────────────────────────── */}
       <section className="flashcards-setup-card">
         <div className="flashcards-setup-header">
-          <div className="flashcards-setup-icon">🎴</div>
+          <div className="flashcards-setup-icon"><Layers size={24} /></div>
           <div>
             <h2 className="flashcards-setup-title">Create Flashcards</h2>
             <p className="flashcards-setup-subtitle">
@@ -263,17 +329,58 @@ export default function FlashcardsView() {
           </div>
         </div>
 
-        <form onSubmit={handleGenerateFlashcards} className="flashcards-form">
-          <div className="flashcards-input-group">
-            <label className="flashcards-label" htmlFor="flashcard-topic">
-              Study Topic:
-            </label>
-            <div className="flashcards-input-row">
-              <input
-                id="flashcard-topic"
-                type="text"
-                className="flashcards-topic-input"
-                placeholder="e.g. Quantum Computing, Machine Learning, Photosynthesis..."
+        <div className="flashcards-source-tabs">
+            <button
+              type="button"
+              className={`flashcards-source-tab ${sourceMode === "topic" ? "active" : ""}`}
+              onClick={() => handleSourceModeChange("topic")}
+            >
+              Any Topic
+            </button>
+            <button
+              type="button"
+              className={`flashcards-source-tab ${sourceMode === "document" ? "active" : ""}`}
+              onClick={() => handleSourceModeChange("document")}
+            >
+              From a Document
+            </button>
+          </div>
+
+          <form onSubmit={handleGenerateFlashcards} className="flashcards-form">
+            {sourceMode === "document" && (
+              <div className="flashcards-input-group">
+                <label className="flashcards-label" htmlFor="flashcard-doc-select">
+                  Choose Document:
+                </label>
+                <CustomSelect
+                  className="flashcards-custom-select flashcards-doc-select"
+                  value={selectedFileId}
+                  onChange={handleSelectDocFile}
+                  options={
+                    docFiles.length > 0
+                      ? docFiles.map((f) => ({ value: f.id, label: f.filename }))
+                      : [{ value: "", label: "No documents uploaded yet" }]
+                  }
+                  disabled={isGenerating || docFiles.length === 0}
+                  title="Select a document"
+                />
+              </div>
+            )}
+
+            <div className="flashcards-input-group">
+              <label className="flashcards-label" htmlFor="flashcard-topic">
+                {sourceMode === "document" ? "Focus Topic (from selected document):" : "Study Topic:"}
+              </label>
+              <div className="flashcards-input-row">
+                <input
+                  id="flashcard-topic"
+                  type="text"
+                  className="flashcards-topic-input"
+                  placeholder={
+                    sourceMode === "document"
+                      ? "e.g. leave as document title, or narrow to a section..."
+                      : "e.g. Quantum Computing, Machine Learning, Photosynthesis..."
+                  }
                 value={topicInput}
                 onChange={(e) => setTopicInput(e.target.value)}
                 disabled={isGenerating}
@@ -339,7 +446,7 @@ export default function FlashcardsView() {
 
           {errorMsg && (
             <div className="flashcards-error-banner">
-              ⚠️ {errorMsg}
+              <AlertTriangle size={16} style={{ verticalAlign: "middle", marginRight: "6px" }} />{errorMsg}
             </div>
           )}
         </form>
@@ -358,10 +465,10 @@ export default function FlashcardsView() {
             </div>
             <div className="flashcards-stats-pills">
               <span className="stat-pill known" title="Marked as Known">
-                ✓ Known: {knownCount}
+                <CheckCircle2 size={13} /> Known: {knownCount}
               </span>
               <span className="stat-pill learning" title="Marked as Still Learning">
-                ↺ Learning: {learningCount}
+                <RotateCcw size={13} /> Learning: {learningCount}
               </span>
             </div>
           </div>
@@ -389,7 +496,7 @@ export default function FlashcardsView() {
                   <span className="flashcard-type-badge">❓ Question</span>
                   {currentCardStatus && (
                     <span className={`flashcard-status-indicator ${currentCardStatus}`}>
-                      {currentCardStatus === "known" ? "✓ Marked Known" : "↺ Still Learning"}
+                      {currentCardStatus === "known" ? (<><CheckCircle2 size={13} /> Marked Known</>) : (<><RotateCcw size={13} /> Still Learning</>)}
                     </span>
                   )}
                 </div>
@@ -409,10 +516,10 @@ export default function FlashcardsView() {
               {/* Back Face: Answer */}
               <div className="flashcard-face flashcard-face-back">
                 <div className="flashcard-badge-row">
-                  <span className="flashcard-type-badge">💡 Answer & Explanation</span>
+                  <span className="flashcard-type-badge"><Lightbulb size={13} /> Answer &amp; Explanation</span>
                   {currentCardStatus && (
                     <span className={`flashcard-status-indicator ${currentCardStatus}`}>
-                      {currentCardStatus === "known" ? "✓ Marked Known" : "↺ Still Learning"}
+                      {currentCardStatus === "known" ? (<><CheckCircle2 size={13} /> Marked Known</>) : (<><RotateCcw size={13} /> Still Learning</>)}
                     </span>
                   )}
                 </div>
@@ -440,7 +547,7 @@ export default function FlashcardsView() {
               disabled={isSavingReview}
               title="Press 1 on keyboard"
             >
-              <span>↺</span> Still Learning
+              <RotateCcw size={15} /> Still Learning
             </button>
             <button
               type="button"
@@ -449,7 +556,7 @@ export default function FlashcardsView() {
               disabled={isSavingReview}
               title="Press 2 on keyboard"
             >
-              <span>✓</span> Known
+              <CheckCircle2 size={15} /> Known
             </button>
           </div>
 
@@ -478,7 +585,7 @@ export default function FlashcardsView() {
                 onClick={handleRestartDeck}
                 title="Restart deck from first card"
               >
-                🔄 Reset
+                <RotateCw size={14} /> Reset
               </button>
             </div>
             <button
@@ -496,7 +603,7 @@ export default function FlashcardsView() {
       {/* ─── Completed Deck Summary Screen ─────────────────────────────────── */}
       {isCompleted && (
         <section className="flashcards-summary-card">
-          <div className="summary-trophy-icon">🏆</div>
+          <div className="summary-trophy-icon"><Trophy size={32} /></div>
           <h3 className="summary-title">Deck Completed!</h3>
           <p className="summary-desc">
             You reviewed all {cards.length} flashcards for <strong>{currentTopic}</strong>.
@@ -525,7 +632,7 @@ export default function FlashcardsView() {
                 onClick={handleReviewWeakCards}
                 style={{ maxWidth: "240px" }}
               >
-                ↺ Practice {learningCount} Weak Cards
+                <RotateCcw size={15} /> Practice {learningCount} Weak Cards
               </button>
             )}
             <button
@@ -534,7 +641,7 @@ export default function FlashcardsView() {
               onClick={handleRestartDeck}
               style={{ maxWidth: "200px" }}
             >
-              🔄 Study Again
+              <RotateCw size={15} /> Study Again
             </button>
           </div>
         </section>

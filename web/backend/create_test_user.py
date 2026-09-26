@@ -1,6 +1,6 @@
 import asyncio
-from database import get_users_collection
-from auth_utils import hash_password
+from web.backend.database import get_users_collection
+from web.backend.auth_utils import hash_password
 
 async def create_user():
     users = get_users_collection()

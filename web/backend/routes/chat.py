@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 
-from auth_utils import get_current_user_email, create_access_token
+from web.backend.auth_utils import get_current_user_email, create_access_token
 
 load_dotenv()
 
@@ -44,7 +44,7 @@ async def ask(
     current_user_email: str = Depends(get_current_user_email),
 ):
     # Strictly derive user_id from the authenticated JWT session (email) only.
-    resolved_user_id = current_user_email
+    resolved_user_id = current_user_email.strip().lower()
 
     # Helper to check if user is asking for a general summary/overview
     q_lower = request.question.lower().strip()
@@ -58,7 +58,6 @@ async def ask(
     if any(p in q_lower for p in summary_phrases):
         if request.filename:
             outgoing_question = f"Provide a detailed summary and overview of the main topics, sections, and key details in the document '{request.filename}'."
-        else:
             outgoing_question = "Provide a detailed summary and overview of the main topics, sections, and key details in the uploaded study documents."
 
     # Build payload for chatbot service
@@ -85,12 +84,10 @@ async def ask(
     target_url = f"{CHATBOT_SERVICE_URL.rstrip('/')}/ask"
 
     # Forward the Bearer authorization header to chatbot service
-    auth_header = req.headers.get("authorization")
-    forward_headers = {"Content-Type": "application/json"}
-    if auth_header:
-        forward_headers["Authorization"] = auth_header
-    else:
-        forward_headers["Authorization"] = f"Bearer {create_access_token(resolved_user_id)}"
+    forward_headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {create_access_token(resolved_user_id)}",
+    }
 
     try:
         timeout = httpx.Timeout(

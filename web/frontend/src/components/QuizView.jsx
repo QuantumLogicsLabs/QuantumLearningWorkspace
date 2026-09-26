@@ -1,27 +1,43 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
+import { FileEdit, Target, CheckCircle2, MessageSquare, AlertTriangle, Circle } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import "./QuizView.css";
 
-export default function QuizView() {
+export default function QuizView({ initialContext, onLaunchRoadmap }) {
   const { token, handle401 } = useAuth();
   const { showToast } = useToast();
 
   // Quiz Request State
-  const [topic, setTopic] = useState("");
+  const [topic, setTopic] = useState(initialContext?.topic || "");
   const [quizType, setQuizType] = useState("mcq");
   const [questionCount, setQuestionCount] = useState(5);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState("");
 
   // Quiz Display State
-  const [quizId, setQuizId] = useState("");
-  const [questions, setQuestions] = useState([]);
+  const [quizId, setQuizId] = useState(initialContext?.quizId || "");
+  const [questions, setQuestions] = useState(initialContext?.questions || []);
   const [userAnswers, setUserAnswers] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
+  // Post-submission completion state
+  const [quizResult, setQuizResult] = useState(null);
+  const [isRoadmapGenerating, setIsRoadmapGenerating] = useState(false);
+
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
+  useEffect(() => {
+    if (initialContext) {
+      if (initialContext.quizId) setQuizId(initialContext.quizId);
+      if (initialContext.questions && initialContext.questions.length > 0) {
+        setQuestions(initialContext.questions);
+      }
+      if (initialContext.topic) setTopic(initialContext.topic);
+      setUserAnswers({});
+    }
+  }, [initialContext]);
 
   // Handle quiz generation
   const handleGenerateQuiz = async (e) => {
@@ -69,6 +85,22 @@ export default function QuizView() {
       setQuizId(data.quiz_id || "");
       setQuestions(data.questions || []);
       setUserAnswers({});
+
+      try {
+        localStorage.setItem(
+          "studymind_last_activity",
+          JSON.stringify({
+            topic: topic.trim(),
+            type: "quiz",
+            subText: `${data.questions?.length || 5} Questions Quiz`,
+            targetTab: "quiz",
+            timestamp: Date.now(),
+          })
+        );
+      } catch (e) {
+        // Ignore localStorage quota errors
+      }
+
       showToast(`Generated ${data.questions?.length || 0} questions!`, "success");
     } catch (err) {
       const errorMsg = err.message || "Failed to generate quiz";
@@ -130,13 +162,12 @@ export default function QuizView() {
 
       showToast(scoreMsg, "success");
 
-      // Reset form
-      setTopic("");
-      setQuizType("mcq");
-      setQuestionCount(5);
-      setQuizId("");
-      setQuestions([]);
-      setUserAnswers({});
+      setQuizResult({
+        score: gradedData.score,
+        total: gradedData.total,
+        percentage: gradedData.percentage,
+        topic: topic,
+      });
     } catch (err) {
       const errorMsg = err.message || "Failed to submit quiz";
       setSubmitError(errorMsg);
@@ -146,12 +177,89 @@ export default function QuizView() {
     }
   };
 
+  // Handle "generate roadmap from this quiz performance"
+  const handleGenerateRoadmapFromQuiz = async () => {
+    setIsRoadmapGenerating(true);
+    try {
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`${API_BASE}/roadmap/generate-from-quiz-performance`, {
+        method: "POST",
+        headers,
+      });
+
+      const data = await res.json();
+
+      if (data && data.success && Array.isArray(data.next_steps) && data.next_steps.length > 0) {
+        if (onLaunchRoadmap) {
+          onLaunchRoadmap({ next_steps: data.next_steps, subject: data.subject });
+        }
+      } else {
+        showToast(data.subject || "No weak topics found yet — take more quizzes first.", "error");
+      }
+    } catch (err) {
+      showToast("Could not generate a roadmap right now. Please try again.", "error");
+    } finally {
+      setIsRoadmapGenerating(false);
+    }
+  };
+
+  const handleTakeAnotherQuiz = () => {
+    setQuizResult(null);
+    setTopic("");
+    setQuizType("mcq");
+    setQuestionCount(5);
+    setQuizId("");
+    setQuestions([]);
+    setUserAnswers({});
+  };
+
+  // Render post-submission completion screen
+  if (quizResult) {
+    return (
+      <div className="quiz-view">
+        <div className="quiz-request-card quiz-completion-card">
+          <CheckCircle2 size={40} className="quiz-completion-icon" />
+          <h2>Quiz Submitted!</h2>
+          <p className="quiz-completion-score">
+            You scored <strong>{quizResult.score}/{quizResult.total}</strong> ({quizResult.percentage}%) on{" "}
+            <strong>{quizResult.topic}</strong>
+          </p>
+          <div className="quiz-completion-actions">
+            <button
+              type="button"
+              className="btn-generate-quiz"
+              onClick={handleGenerateRoadmapFromQuiz}
+              disabled={isRoadmapGenerating}
+            >
+              {isRoadmapGenerating ? (
+                <>
+                  <span className="spinner" style={{ width: "16px", height: "16px", borderWidth: "2px" }}></span>
+                  Generating Roadmap...
+                </>
+              ) : (
+                <>
+                  <Target size={16} style={{ marginRight: "6px" }} />
+                  Get My Study Roadmap
+                </>
+              )}
+            </button>
+            <button type="button" className="btn-secondary-quiz" onClick={handleTakeAnotherQuiz}>
+              Take Another Quiz
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Render quiz request form
   if (questions.length === 0) {
     return (
       <div className="quiz-view">
         <div className="quiz-request-card">
-          <h2>📝 Create a Quiz</h2>
+          <h2><FileEdit size={18} style={{ verticalAlign: "middle", marginRight: "8px" }} />Create a Quiz</h2>
           <p className="quiz-subtitle">Test your knowledge on any topic from your study materials</p>
 
           <form onSubmit={handleGenerateQuiz} className="quiz-form">
@@ -174,10 +282,10 @@ export default function QuizView() {
               <label className="form-label">Quiz Type</label>
               <div className="quiz-type-grid">
                 {[
-                  { value: "mcq", label: "Multiple Choice", icon: "🎯" },
-                  { value: "true_false", label: "True/False", icon: "✓" },
-                  { value: "fill_blank", label: "Fill in the Blank", icon: "📝" },
-                  { value: "short_answer", label: "Short Answer", icon: "💬" },
+                  { value: "mcq", label: "Multiple Choice", icon: Target },
+                  { value: "true_false", label: "True/False", icon: CheckCircle2 },
+                  { value: "fill_blank", label: "Fill in the Blank", icon: FileEdit },
+                  { value: "short_answer", label: "Short Answer", icon: MessageSquare },
                 ].map((type) => (
                   <button
                     key={type.value}
@@ -186,7 +294,7 @@ export default function QuizView() {
                     onClick={() => setQuizType(type.value)}
                     disabled={isGenerating}
                   >
-                    <span className="type-icon">{type.icon}</span>
+                    <span className="type-icon"><type.icon size={18} /></span>
                     <span className="type-label">{type.label}</span>
                   </button>
                 ))}
@@ -213,7 +321,7 @@ export default function QuizView() {
             {/* Error Message */}
             {generateError && (
               <div className="error-banner">
-                <span className="error-icon">⚠️</span>
+                <span className="error-icon"><AlertTriangle size={16} /></span>
                 <span>{generateError}</span>
               </div>
             )}
@@ -237,7 +345,7 @@ export default function QuizView() {
     <div className="quiz-view">
       <div className="quiz-header-section">
         <div className="quiz-header-info">
-          <h2>🎯 Quiz: {topic}</h2>
+          <h2><Target size={18} style={{ verticalAlign: "middle", marginRight: "8px" }} />Quiz: {topic}</h2>
           <p className="quiz-progress">
             Question {Object.keys(userAnswers).length} of {questions.length}
           </p>
@@ -264,7 +372,7 @@ export default function QuizView() {
                 <div className="question-header">
                   <span className="question-number">Q{index + 1}</span>
                   <span className={`question-status ${isAnswered ? "answered" : "unanswered"}`}>
-                    {isAnswered ? "✓ Answered" : "○ Unanswered"}
+                    {isAnswered ? (<><CheckCircle2 size={13} /> Answered</>) : (<><Circle size={13} /> Unanswered</>)}
                   </span>
                 </div>
 
@@ -330,7 +438,7 @@ export default function QuizView() {
         {/* Error Message */}
         {submitError && (
           <div className="error-banner">
-            <span className="error-icon">⚠️</span>
+            <span className="error-icon"><AlertTriangle size={16} /></span>
             <span>{submitError}</span>
           </div>
         )}

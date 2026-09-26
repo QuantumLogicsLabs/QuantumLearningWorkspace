@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
+import { ChevronDown } from "lucide-react";
 import "./CustomSelect.css";
 
 export default function CustomSelect({
@@ -53,7 +54,7 @@ export default function CustomSelect({
         title={title}
       >
         <span className="custom-select-label">{displayLabel}</span>
-        <span className={`custom-select-arrow ${isOpen ? "open" : ""}`}>▾</span>
+        <ChevronDown size={15} className={`custom-select-arrow ${isOpen ? "open" : ""}`} />
       </button>
 
       {isOpen && (

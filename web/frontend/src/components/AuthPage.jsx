@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
+import { Bot, BookOpen, Target, Eye, EyeOff, Mail } from "lucide-react";
 import "./AuthPage.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
@@ -32,24 +33,132 @@ function GitHubIcon() {
 
 function AuthPage({ initialMode = "login", onLoginSuccess, onBackToHome }) {
   const [mode, setMode] = useState(initialMode);
+  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
+  const [canVerifyFromLogin, setCanVerifyFromLogin] = useState(false);
   const { login } = useAuth();
+
+  // 60-second cooldown timer for resend OTP
+  useEffect(() => {
+    let timer;
+    if (resendCooldown > 0) {
+      timer = setInterval(() => {
+        setResendCooldown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  // Real-time password rules state
+  const [pwdRules, setPwdRules] = useState({
+    length: false,
+    uppercase: false,
+    lowercase: false,
+    number: false,
+    special: false,
+  });
+
+  const checkPassword = (val) => {
+    setPwdRules({
+      length: val.length >= 8,
+      uppercase: /[A-Z]/.test(val),
+      lowercase: /[a-z]/.test(val),
+      number: /[0-9]/.test(val),
+      special: /[^A-Za-z0-9]/.test(val),
+    });
+  };
+
+  const getStrength = (val) => {
+    if (!val) return null;
+    const score = [
+      val.length >= 8,
+      /[A-Z]/.test(val),
+      /[a-z]/.test(val),
+      /[0-9]/.test(val),
+      /[^A-Za-z0-9]/.test(val),
+    ].filter(Boolean).length;
+    if (score <= 2) return { label: "Weak", level: 1 };
+    if (score <= 4) return { label: "Normal", level: 2 };
+    return { label: "Strong", level: 3 };
+  };
+
+  const generatePassword = () => {
+    const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const lower = "abcdefghijklmnopqrstuvwxyz";
+    const nums  = "0123456789";
+    const syms  = "!@#$%^&*";
+    const all   = upper + lower + nums + syms;
+    let pwd =
+      upper[Math.floor(Math.random() * upper.length)] +
+      lower[Math.floor(Math.random() * lower.length)] +
+      nums [Math.floor(Math.random() * nums.length)]  +
+      syms [Math.floor(Math.random() * syms.length)];
+    for (let i = 4; i < 14; i++) {
+      pwd += all[Math.floor(Math.random() * all.length)];
+    }
+    pwd = pwd.split("").sort(() => Math.random() - 0.5).join("");
+    setPassword(pwd);
+    setConfirmPassword(pwd);
+    setShowPassword(true);
+    checkPassword(pwd);
+    navigator.clipboard?.writeText(pwd).catch(() => {});
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
     setIsError(false);
+    setCanVerifyFromLogin(false);
+    setIsSubmitting(true);
+
+    // Signup specific validations
+    if (mode === "signup") {
+      if (name.trim().length < 2) {
+        setIsError(true);
+        setMessage("Please enter your full name (at least 2 characters).");
+        setIsSubmitting(false);
+        return;
+      }
+      if (username.trim().length < 3) {
+        setIsError(true);
+        setMessage("Username must be at least 3 characters.");
+        setIsSubmitting(false);
+        return;
+      }
+      if (password !== confirmPassword) {
+        setIsError(true);
+        setMessage("Passwords do not match.");
+        setIsSubmitting(false);
+        return;
+      }
+    }
 
     const endpoint = mode === "login" ? "/login" : "/signup";
+    const payload =
+      mode === "login"
+        ? { email, password }
+        : {
+            name: name.trim(),
+            username: username.trim().toLowerCase(),
+            email: email.trim().toLowerCase(),
+            password,
+          };
 
     try {
       const response = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -57,6 +166,9 @@ function AuthPage({ initialMode = "login", onLoginSuccess, onBackToHome }) {
       if (!response.ok) {
         setIsError(true);
         setMessage(data.detail || "Something went wrong");
+        if (response.status === 403 && (data.detail || "").toLowerCase().includes("not verified")) {
+          setCanVerifyFromLogin(true);
+        }
         return;
       }
 
@@ -67,21 +179,104 @@ function AuthPage({ initialMode = "login", onLoginSuccess, onBackToHome }) {
         onLoginSuccess?.(data.access_token);
         setMessage("Logged in successfully!");
       } else {
-        setMessage("Account created! You can sign in now.");
-        setMode("login");
+        // Signup succeeded -> Transition to OTP verification
+        if (data.requires_verification) {
+          setMode("verify");
+          setOtp("");
+          setResendCooldown(60);
+          setMessage("We've sent a 6-digit verification code to your email.");
+          setIsError(false);
+        } else {
+          setMessage("Account created! You can sign in now.");
+          setMode("login");
+        }
       }
     } catch (err) {
       setIsError(true);
       setMessage("Could not reach the server. Is the backend running?");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    if (!otp || otp.trim().length !== 6) {
+      setIsError(true);
+      setMessage("Please enter a valid 6-digit verification code.");
+      return;
+    }
+
+    setMessage("");
+    setIsError(false);
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`${API_BASE}/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().lower ? email.trim().toLowerCase() : email.trim(), otp: otp.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setIsError(true);
+        setMessage(data.detail || "Verification failed. Please try again.");
+        return;
+      }
+
+      // Success -> Auto login to Dashboard
+      if (data.access_token) {
+        login(data.access_token);
+      }
+      onLoginSuccess?.(data.access_token);
+      setMessage("Email verified successfully! Redirecting...");
+    } catch (err) {
+      setIsError(true);
+      setMessage("Could not reach the server. Please check your connection.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+    setMessage("");
+    setIsError(false);
+
+    try {
+      const response = await fetch(`${API_BASE}/resend-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setIsError(true);
+        setMessage(data.detail || "Could not resend verification code.");
+        return;
+      }
+
+      setResendCooldown(60);
+      setMessage("A fresh 6-digit verification code has been sent!");
+      setIsError(false);
+    } catch (err) {
+      setIsError(true);
+      setMessage("Failed to reach server to resend code.");
     }
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = `${API_BASE}/auth/google/login`;
+    const origin = window.location.origin;
+    window.location.href = `${API_BASE}/auth/google/login?redirect_to=${encodeURIComponent(origin)}`;
   };
 
   const handleGithubLogin = () => {
-    window.location.href = `${API_BASE}/auth/github/login`;
+    const origin = window.location.origin;
+    window.location.href = `${API_BASE}/auth/github/login?redirect_to=${encodeURIComponent(origin)}`;
   };
 
   return (
@@ -110,7 +305,7 @@ function AuthPage({ initialMode = "login", onLoginSuccess, onBackToHome }) {
         </p>
 
         <div className="auth-feature">
-          <span className="auth-feature-icon">🤖</span>
+          <span className="auth-feature-icon"><Bot size={20} /></span>
           <div>
             <div className="auth-feature-title">RAG-Powered Chatbot</div>
             <div className="auth-feature-desc">Ask questions about your study material</div>
@@ -118,7 +313,7 @@ function AuthPage({ initialMode = "login", onLoginSuccess, onBackToHome }) {
         </div>
 
         <div className="auth-feature">
-          <span className="auth-feature-icon">📖</span>
+          <span className="auth-feature-icon"><BookOpen size={20} /></span>
           <div>
             <div className="auth-feature-title">Knowledge Graph</div>
             <div className="auth-feature-desc">Visualize connections between concepts</div>
@@ -126,7 +321,7 @@ function AuthPage({ initialMode = "login", onLoginSuccess, onBackToHome }) {
         </div>
 
         <div className="auth-feature">
-          <span className="auth-feature-icon">🎯</span>
+          <span className="auth-feature-icon"><Target size={20} /></span>
           <div>
             <div className="auth-feature-title">Smart Study Planner</div>
             <div className="auth-feature-desc">AI identifies weak topics & plans your path</div>
@@ -148,83 +343,266 @@ function AuthPage({ initialMode = "login", onLoginSuccess, onBackToHome }) {
           <ThemeToggle />
         </div>
         <div className="auth-card">
-          <h1>{mode === "login" ? "Welcome Back" : "Create Account"}</h1>
-          <p className="auth-card-subtext">
-            {mode === "login"
-              ? "Sign in to continue your learning journey"
-              : "Start your AI-powered learning journey"}
-          </p>
+          {mode === "verify" ? (
+            <div className="otp-verify-container">
+              <div className="otp-icon-wrap">
+                <Mail size={32} color="var(--color-primary, #6366f1)" />
+              </div>
+              <h1>Verify Your Email</h1>
+              <p className="auth-card-subtext">
+                We sent a 6-digit verification code to<br />
+                <strong style={{ color: "var(--color-text, #1e293b)" }}>{email}</strong>
+              </p>
 
-          <div className="auth-tabs">
-            <button
-              type="button"
-              className={`auth-tab ${mode === "login" ? "active" : ""}`}
-              onClick={() => { setMode("login"); setMessage(""); }}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              className={`auth-tab ${mode === "signup" ? "active" : ""}`}
-              onClick={() => { setMode("signup"); setMessage(""); }}
-            >
-              Sign Up
-            </button>
-          </div>
+              <form className="auth-form" onSubmit={handleVerifyOtp} style={{ marginTop: "1.5rem" }}>
+                <label className="auth-label" style={{ textAlign: "center", display: "block" }}>
+                  Enter 6-Digit Code
+                </label>
+                <input
+                  type="text"
+                  className="auth-input otp-code-input"
+                  placeholder="------"
+                  value={otp}
+                  maxLength={6}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                  autoFocus
+                  required
+                />
 
-          <div className="auth-form-wrapper" key={mode}>
-            <form className="auth-form" onSubmit={handleSubmit}>
-              <label className="auth-label">Email Address</label>
-              <input
-                type="email"
-                className="auth-input"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+                <button type="submit" className="auth-submit" disabled={isSubmitting || otp.length !== 6}>
+                  {isSubmitting ? "Verifying..." : "Verify & Continue"}
+                </button>
+              </form>
 
-              <label className="auth-label">Password</label>
-              <input
-                type="password"
-                className="auth-input"
-                placeholder={mode === "login" ? "Enter your password" : "Create a strong password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-
-              {mode === "login" && (
-                <div className="auth-row">
-                  <label><input type="checkbox" /> Remember me</label>
-                  <a href="#">Forgot password?</a>
-                </div>
+              {message && (
+                <p className="auth-message" style={{ color: isError ? "var(--color-error)" : "var(--color-success)" }}>
+                  {message}
+                </p>
               )}
 
-              <button type="submit" className="auth-submit">
-                {mode === "login" ? "Sign In" : "Create Account"}
+              <div className="otp-resend-wrap">
+                {resendCooldown > 0 ? (
+                  <span className="otp-countdown">Resend code in {resendCooldown}s</span>
+                ) : (
+                  <button type="button" className="otp-resend-btn" onClick={handleResendOtp}>
+                    Didn't get code? Resend Code
+                  </button>
+                )}
+              </div>
+
+              <button
+                type="button"
+                className="otp-back-btn"
+                onClick={() => {
+                  setMode("signup");
+                  setMessage("");
+                  setIsError(false);
+                }}
+              >
+                ← Back / Change email
               </button>
-            </form>
-
-            {message && (
-              <p className="auth-message" style={{ color: isError ? "var(--color-error)" : "var(--color-success)" }}>
-                {message}
+            </div>
+          ) : (
+            <>
+              <h1>{mode === "login" ? "Welcome Back" : "Create Account"}</h1>
+              <p className="auth-card-subtext">
+                {mode === "login"
+                  ? "Sign in to continue your learning journey"
+                  : "Start your AI-powered learning journey"}
               </p>
-            )}
-          </div>
 
-          <div className="auth-divider">or continue with</div>
-          <div className="auth-social-row">
-            <button type="button" className="auth-social-btn" onClick={handleGoogleLogin}>
-              <GoogleIcon />
-              Google
-            </button>
-            <button type="button" className="auth-social-btn" onClick={handleGithubLogin}>
-              <GitHubIcon />
-              GitHub
-            </button>
-          </div>
+              <div className="auth-tabs">
+                <button
+                  type="button"
+                  className={`auth-tab ${mode === "login" ? "active" : ""}`}
+                  onClick={() => { setMode("login"); setMessage(""); setCanVerifyFromLogin(false); }}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  className={`auth-tab ${mode === "signup" ? "active" : ""}`}
+                  onClick={() => { setMode("signup"); setMessage(""); setCanVerifyFromLogin(false); }}
+                >
+                  Sign Up
+                </button>
+              </div>
+
+              <div className="auth-form-wrapper" key={mode}>
+                <form className="auth-form" onSubmit={handleSubmit}>
+                  {mode === "signup" && (
+                    <>
+                      <label className="auth-label">Full Name</label>
+                      <input
+                        type="text"
+                        className="auth-input"
+                        placeholder="e.g. Ali Ahmed"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        required
+                      />
+
+                      <label className="auth-label">Username</label>
+                      <input
+                        type="text"
+                        className="auth-input"
+                        placeholder="e.g. ali_99"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.-]/g, ""))}
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        required
+                      />
+                    </>
+                  )}
+
+                  <label className="auth-label">Email Address</label>
+                  <input
+                    type="email"
+                    className="auth-input"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+
+                  <div className="pwd-label-row">
+                    <label className="auth-label">Password</label>
+                    {mode === "signup" && (
+                      <button type="button" className="pwd-suggest-btn" onClick={generatePassword}>
+                        Suggest Password
+                      </button>
+                    )}
+                  </div>
+                  <div className="pwd-input-wrapper">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      className="auth-input"
+                      placeholder={mode === "login" ? "Enter your password" : "Create a strong password"}
+                      value={password}
+                      onChange={(e) => { setPassword(e.target.value); if (mode === "signup") checkPassword(e.target.value); }}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="pwd-eye-btn"
+                      onClick={() => setShowPassword((v) => !v)}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                    </button>
+                  </div>
+
+                  {mode === "signup" && password.length > 0 && (() => {
+                    const s = getStrength(password);
+                    return (
+                      <div className="pwd-strength-bar-wrap">
+                        <div className="pwd-strength-bar">
+                          <div className={`pwd-strength-fill level-${s.level}`} />
+                        </div>
+                        <span className={`pwd-strength-label level-${s.level}`}>{s.label}</span>
+                      </div>
+                    );
+                  })()}
+
+                  {mode === "signup" && password.length > 0 && (
+                    <ul className="pwd-checklist">
+                      <li className={pwdRules.length ? "pwd-rule met" : "pwd-rule"}>
+                        {pwdRules.length ? "✅" : "❌"} At least 8 characters
+                      </li>
+                      <li className={pwdRules.uppercase ? "pwd-rule met" : "pwd-rule"}>
+                        {pwdRules.uppercase ? "✅" : "❌"} One uppercase letter
+                      </li>
+                      <li className={pwdRules.lowercase ? "pwd-rule met" : "pwd-rule"}>
+                        {pwdRules.lowercase ? "✅" : "❌"} One lowercase letter
+                      </li>
+                      <li className={pwdRules.number ? "pwd-rule met" : "pwd-rule"}>
+                        {pwdRules.number ? "✅" : "❌"} One number
+                      </li>
+                      <li className={pwdRules.special ? "pwd-rule met" : "pwd-rule"}>
+                        {pwdRules.special ? "✅" : "❌"} One special character (!@#$ etc.)
+                      </li>
+                    </ul>
+                  )}
+
+                  {mode === "signup" && (
+                    <>
+                      <label className="auth-label">Confirm Password</label>
+                      <div className="pwd-input-wrapper">
+                        <input
+                          type={showConfirm ? "text" : "password"}
+                          className="auth-input"
+                          placeholder="Re-enter your password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="pwd-eye-btn"
+                          onClick={() => setShowConfirm((v) => !v)}
+                          tabIndex={-1}
+                        >
+                          {showConfirm ? <EyeOff size={17} /> : <Eye size={17} />}
+                        </button>
+                      </div>
+                      {confirmPassword.length > 0 && (
+                        <p className={`pwd-match-msg ${password === confirmPassword ? "met" : ""}`}>
+                          {password === confirmPassword ? "✅ Passwords match" : "❌ Passwords don't match"}
+                        </p>
+                      )}
+                    </>
+                  )}
+
+                  {mode === "login" && (
+                    <div className="auth-row">
+                      <label><input type="checkbox" /> Remember me</label>
+                      <a href="#">Forgot password?</a>
+                    </div>
+                  )}
+
+                  <button type="submit" className="auth-submit" disabled={isSubmitting}>
+                    {isSubmitting ? "Please wait..." : (mode === "login" ? "Sign In" : "Create Account")}
+                  </button>
+                </form>
+
+                {message && (
+                  <div style={{ textAlign: "center" }}>
+                    <p className="auth-message" style={{ color: isError ? "var(--color-error)" : "var(--color-success)" }}>
+                      {message}
+                    </p>
+                    {canVerifyFromLogin && (
+                      <button
+                        type="button"
+                        className="otp-resend-btn"
+                        style={{ marginTop: "0.25rem", fontSize: "0.85rem" }}
+                        onClick={() => {
+                          setMode("verify");
+                          setMessage("Enter the code sent to your email.");
+                          setIsError(false);
+                          handleResendOtp();
+                        }}
+                      >
+                        Click here to verify email now →
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="auth-divider">or continue with</div>
+              <div className="auth-social-row">
+                <button type="button" className="auth-social-btn" onClick={handleGoogleLogin}>
+                  <GoogleIcon />
+                  Google
+                </button>
+                <button type="button" className="auth-social-btn" onClick={handleGithubLogin}>
+                  <GitHubIcon />
+                  GitHub
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

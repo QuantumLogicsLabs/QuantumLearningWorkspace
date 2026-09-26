@@ -1,4 +1,6 @@
 venv/
+.venv/
+**/.venv/
 rag_venv/
 node_modules/
 __pycache__/

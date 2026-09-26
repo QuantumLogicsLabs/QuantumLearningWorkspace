@@ -177,3 +177,190 @@ body {
 [data-theme="light"] *::-webkit-scrollbar-thumb:active {
   background: #6d28d9;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Accent Color Presets — overrides brand/action colors only.
+   Status colors (error/success/warning) stay constant across all presets.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Ocean */
+[data-accent="ocean"] {
+  --color-primary-purple: #0ea5e9;
+  --color-primary-blue: #2563eb;
+  --color-accent-blue: #38bdf8;
+  --color-accent-purple: #60a5fa;
+  --color-accent-pink: #22d3ee;
+  --gradient-primary: linear-gradient(135deg, #0ea5e9, #2563eb);
+  --gradient-logo: linear-gradient(135deg, #0ea5e9, #22d3ee);
+  --gradient-heading: linear-gradient(135deg, #38bdf8, #2563eb);
+}
+[data-theme="light"][data-accent="ocean"] {
+  --color-primary-purple: #0284c7;
+  --color-primary-blue: #1d4ed8;
+  --color-accent-blue: #2563eb;
+  --color-accent-purple: #0284c7;
+  --color-accent-pink: #0891b2;
+  --gradient-primary: linear-gradient(135deg, #0284c7, #1d4ed8);
+  --gradient-logo: linear-gradient(135deg, #0284c7, #0891b2);
+  --gradient-heading: linear-gradient(135deg, #0284c7, #1d4ed8);
+}
+
+/* Emerald */
+[data-accent="emerald"] {
+  --color-primary-purple: #10b981;
+  --color-primary-blue: #0d9488;
+  --color-accent-blue: #2dd4bf;
+  --color-accent-purple: #34d399;
+  --color-accent-pink: #06b6d4;
+  --gradient-primary: linear-gradient(135deg, #10b981, #0d9488);
+  --gradient-logo: linear-gradient(135deg, #10b981, #06b6d4);
+  --gradient-heading: linear-gradient(135deg, #34d399, #0d9488);
+}
+[data-theme="light"][data-accent="emerald"] {
+  --color-primary-purple: #059669;
+  --color-primary-blue: #0f766e;
+  --color-accent-blue: #0d9488;
+  --color-accent-purple: #059669;
+  --color-accent-pink: #0e7490;
+  --gradient-primary: linear-gradient(135deg, #059669, #0f766e);
+  --gradient-logo: linear-gradient(135deg, #059669, #0e7490);
+  --gradient-heading: linear-gradient(135deg, #059669, #0f766e);
+}
+
+/* Rose */
+[data-accent="rose"] {
+  --color-primary-purple: #f43f5e;
+  --color-primary-blue: #e11d48;
+  --color-accent-blue: #fb7185;
+  --color-accent-purple: #fda4af;
+  --color-accent-pink: #ec4899;
+  --gradient-primary: linear-gradient(135deg, #f43f5e, #e11d48);
+  --gradient-logo: linear-gradient(135deg, #f43f5e, #ec4899);
+  --gradient-heading: linear-gradient(135deg, #fb7185, #e11d48);
+}
+[data-theme="light"][data-accent="rose"] {
+  --color-primary-purple: #e11d48;
+  --color-primary-blue: #be123c;
+  --color-accent-blue: #f43f5e;
+  --color-accent-purple: #e11d48;
+  --color-accent-pink: #db2777;
+  --gradient-primary: linear-gradient(135deg, #e11d48, #be123c);
+  --gradient-logo: linear-gradient(135deg, #e11d48, #db2777);
+  --gradient-heading: linear-gradient(135deg, #e11d48, #be123c);
+}
+
+/* Amber */
+[data-accent="amber"] {
+  --color-primary-purple: #f59e0b;
+  --color-primary-blue: #ea580c;
+  --color-accent-blue: #fb923c;
+  --color-accent-purple: #fbbf24;
+  --color-accent-pink: #f97316;
+  --gradient-primary: linear-gradient(135deg, #f59e0b, #ea580c);
+  --gradient-logo: linear-gradient(135deg, #f59e0b, #f97316);
+  --gradient-heading: linear-gradient(135deg, #fbbf24, #ea580c);
+}
+[data-theme="light"][data-accent="amber"] {
+  --color-primary-purple: #d97706;
+  --color-primary-blue: #c2410c;
+  --color-accent-blue: #ea580c;
+  --color-accent-purple: #d97706;
+  --color-accent-pink: #c2410c;
+  --gradient-primary: linear-gradient(135deg, #d97706, #c2410c);
+  --gradient-logo: linear-gradient(135deg, #d97706, #c2410c);
+  --gradient-heading: linear-gradient(135deg, #d97706, #c2410c);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Accent Color Presets — overrides brand/action colors only.
+   Status colors (error/success/warning) stay constant across all presets.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Ocean */
+[data-accent="ocean"] {
+  --color-primary-purple: #0ea5e9;
+  --color-primary-blue: #2563eb;
+  --color-accent-blue: #38bdf8;
+  --color-accent-purple: #60a5fa;
+  --color-accent-pink: #22d3ee;
+  --gradient-primary: linear-gradient(135deg, #0ea5e9, #2563eb);
+  --gradient-logo: linear-gradient(135deg, #0ea5e9, #22d3ee);
+  --gradient-heading: linear-gradient(135deg, #38bdf8, #2563eb);
+}
+[data-theme="light"][data-accent="ocean"] {
+  --color-primary-purple: #0284c7;
+  --color-primary-blue: #1d4ed8;
+  --color-accent-blue: #2563eb;
+  --color-accent-purple: #0284c7;
+  --color-accent-pink: #0891b2;
+  --gradient-primary: linear-gradient(135deg, #0284c7, #1d4ed8);
+  --gradient-logo: linear-gradient(135deg, #0284c7, #0891b2);
+  --gradient-heading: linear-gradient(135deg, #0284c7, #1d4ed8);
+}
+
+/* Emerald */
+[data-accent="emerald"] {
+  --color-primary-purple: #10b981;
+  --color-primary-blue: #0d9488;
+  --color-accent-blue: #2dd4bf;
+  --color-accent-purple: #34d399;
+  --color-accent-pink: #06b6d4;
+  --gradient-primary: linear-gradient(135deg, #10b981, #0d9488);
+  --gradient-logo: linear-gradient(135deg, #10b981, #06b6d4);
+  --gradient-heading: linear-gradient(135deg, #34d399, #0d9488);
+}
+[data-theme="light"][data-accent="emerald"] {
+  --color-primary-purple: #059669;
+  --color-primary-blue: #0f766e;
+  --color-accent-blue: #0d9488;
+  --color-accent-purple: #059669;
+  --color-accent-pink: #0e7490;
+  --gradient-primary: linear-gradient(135deg, #059669, #0f766e);
+  --gradient-logo: linear-gradient(135deg, #059669, #0e7490);
+  --gradient-heading: linear-gradient(135deg, #059669, #0f766e);
+}
+
+/* Rose */
+[data-accent="rose"] {
+  --color-primary-purple: #f43f5e;
+  --color-primary-blue: #e11d48;
+  --color-accent-blue: #fb7185;
+  --color-accent-purple: #fda4af;
+  --color-accent-pink: #ec4899;
+  --gradient-primary: linear-gradient(135deg, #f43f5e, #e11d48);
+  --gradient-logo: linear-gradient(135deg, #f43f5e, #ec4899);
+  --gradient-heading: linear-gradient(135deg, #fb7185, #e11d48);
+}
+[data-theme="light"][data-accent="rose"] {
+  --color-primary-purple: #e11d48;
+  --color-primary-blue: #be123c;
+  --color-accent-blue: #f43f5e;
+  --color-accent-purple: #e11d48;
+  --color-accent-pink: #db2777;
+  --gradient-primary: linear-gradient(135deg, #e11d48, #be123c);
+  --gradient-logo: linear-gradient(135deg, #e11d48, #db2777);
+  --gradient-heading: linear-gradient(135deg, #e11d48, #be123c);
+}
+
+/* Amber */
+[data-accent="amber"] {
+  --color-primary-purple: #f59e0b;
+  --color-primary-blue: #ea580c;
+  --color-accent-blue: #fb923c;
+  --color-accent-purple: #fbbf24;
+  --color-accent-pink: #f97316;
+  --gradient-primary: linear-gradient(135deg, #f59e0b, #ea580c);
+  --gradient-logo: linear-gradient(135deg, #f59e0b, #f97316);
+  --gradient-heading: linear-gradient(135deg, #fbbf24, #ea580c);
+}
+[data-theme="light"][data-accent="amber"] {
+  --color-primary-purple: #d97706;
+  --color-primary-blue: #c2410c;
+  --color-accent-blue: #ea580c;
+  --color-accent-purple: #d97706;
+  --color-accent-pink: #c2410c;
+  --gradient-primary: linear-gradient(135deg, #d97706, #c2410c);
+  --gradient-logo: linear-gradient(135deg, #d97706, #c2410c);
+  --gradient-heading: linear-gradient(135deg, #d97706, #c2410c);
+}

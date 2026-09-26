@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
+import { Rocket, Target, Clock } from "lucide-react";
 import "./RecommendedNextSteps.css";
 
 // Fallback placeholder roadmap items per Part C prompt instructions:
@@ -105,7 +106,7 @@ export default function RecommendedNextSteps({ onNavigate }) {
     <section className="recommended-steps-container" aria-label="Recommended Next Steps">
       <div className="recommended-steps-header">
         <div className="recommended-steps-title-group">
-          <div className="recommended-steps-icon">🚀</div>
+          <div className="recommended-steps-icon"><Rocket size={20} color="#ffffff" strokeWidth={2.25} /></div>
           <div>
             <h2 className="recommended-steps-heading">Recommended Next Steps</h2>
             <p className="recommended-steps-subtitle">
@@ -114,7 +115,7 @@ export default function RecommendedNextSteps({ onNavigate }) {
           </div>
         </div>
         <div className="recommended-steps-badge">
-          <span>🎯</span> Top {steps.length} Milestones
+          <Target size={13} /> Top {steps.length} Milestones
         </div>
       </div>
 
@@ -142,7 +143,7 @@ export default function RecommendedNextSteps({ onNavigate }) {
 
               <div className="step-card-footer">
                 <span className="step-duration">
-                  <span>⏱️</span> {step.estimated_duration || "1-2 days"}
+                  <Clock size={13} /> {step.estimated_duration || "1-2 days"}
                 </span>
                 <button
                   type="button"

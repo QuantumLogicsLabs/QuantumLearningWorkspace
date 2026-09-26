@@ -35,3 +35,4 @@ uvicorn==0.51.0
 watchfiles==1.2.0
 websockets==16.1
 annotated-doc==0.0.4
+groq

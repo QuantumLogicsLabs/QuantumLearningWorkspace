@@ -7,12 +7,15 @@ from typing import Optional, List, Dict, Any
 
 from groq import AsyncGroq
 from fastapi import APIRouter, HTTPException, Depends, Header, status
-from auth_utils import get_current_user_email
-import database
-from models import (
+import re
+from web.backend.auth_utils import get_current_user_email
+from web.backend import database
+from web.backend.models import (
     Flashcard,
     GenerateFlashcardsRequest,
     GenerateFlashcardsResponse,
+    ExtractDocumentTopicsRequest,
+    ExtractDocumentTopicsResponse,
     FlashcardReviewRequest,
     FlashcardReview,
     WeakTopicSummary,
@@ -297,9 +300,104 @@ Format:
         logger.warning(f"Groq flashcards generation encountered an error: {e}")
         return []
 
+def _extract_document_text(document_id: str) -> Optional[str]:
+    """Extract text content from uploaded document PDF on disk."""
+    try:
+        from pypdf import PdfReader
+        upload_dir = os.getenv(
+            "UPLOAD_DIRECTORY",
+            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploaded_files"),
+        )
+        pdf_path = os.path.join(upload_dir, f"{document_id}.pdf")
+        if not os.path.exists(pdf_path):
+            return None
+        reader = PdfReader(pdf_path)
+        extracted = []
+        for page in reader.pages[:12]:
+            t = page.extract_text()
+            if t and t.strip():
+                extracted.append(t.strip())
+        return "\n\n".join(extracted)[:9000] if extracted else None
+    except Exception as e:
+        logger.warning(f"Failed to extract document text for flashcards (doc_id={document_id}): {e}")
+        return None
+
+
 # ==========================================
 # Endpoints
 # ==========================================
+
+@router.post("/flashcards/extract-document-topics", response_model=ExtractDocumentTopicsResponse)
+async def extract_document_topics(
+    request: ExtractDocumentTopicsRequest,
+    current_user_email: str = Depends(get_current_user_email),
+):
+    """
+    Analyzes an uploaded document's content and extracts key study topics/subtopics.
+    Allows the user to choose a specific topic before generating flashcards.
+    """
+    document_id = request.document_id
+    filename = request.filename or "Document"
+    clean_base = filename.rsplit(".", 1)[0].replace("_", " ").replace("-", " ").strip()
+    if not clean_base:
+        clean_base = "Study Material"
+
+    doc_text = _extract_document_text(document_id)
+    topics: List[str] = []
+
+    if doc_text and doc_text.strip():
+        api_key = os.getenv("GROQ_API_KEY")
+        if api_key:
+            try:
+                from groq import AsyncGroq
+                client = AsyncGroq(api_key=api_key, timeout=15.0)
+                model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+                resp = await client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": (
+                                "You are an expert academic curriculum analyzer. Read the provided document text sample "
+                                "and identify 3 to 6 major distinct subtopics or concepts covered in this document. "
+                                "Return ONLY a valid JSON array of concise topic strings (e.g. [\"Topic 1\", \"Topic 2\", \"Topic 3\"]). "
+                                "Do NOT include markdown backticks or commentary."
+                            ),
+                        },
+                        {
+                            "role": "user",
+                            "content": f"Document: {clean_base}\n\nContent Sample:\n{doc_text[:3500]}",
+                        },
+                    ],
+                    temperature=0.3,
+                )
+                raw = resp.choices[0].message.content.strip()
+                if raw.startswith("```"):
+                    raw = re.sub(r"^```(?:json)?", "", raw, flags=re.MULTILINE)
+                    raw = raw.rstrip("`").strip()
+                parsed = json.loads(raw)
+                if isinstance(parsed, list):
+                    topics = [str(t).strip() for t in parsed if str(t).strip()][:6]
+            except Exception as e:
+                logger.warning(f"Groq topic extraction failed: {e}")
+
+    # Heuristic fallback if LLM extraction returned empty or failed
+    if not topics:
+        topics = [
+            f"Overview & Core Definitions",
+            f"Key Principles of {clean_base}",
+            f"Practical Mechanisms & Applications",
+            f"Advanced Concepts & Review",
+        ]
+
+    return ExtractDocumentTopicsResponse(
+        success=True,
+        document_id=document_id,
+        filename=filename,
+        topics=topics,
+        default_topic=clean_base,
+    )
+
 
 @router.post("/generate-flashcards", response_model=GenerateFlashcardsResponse)
 @router.post("/flashcards/generate", response_model=GenerateFlashcardsResponse)
@@ -310,6 +408,7 @@ async def generate_flashcards(
     """
     Topic-based flashcard generation endpoint.
     Returns generated flashcards with unique id, question/front, and answer/back.
+    Supports scoping to specific document via document_id.
     """
     if not request.topic or not request.topic.strip():
         raise HTTPException(
@@ -322,13 +421,18 @@ async def generate_flashcards(
     difficulty = request.difficulty or "medium"
     topic_cleaned = request.topic.strip()
 
+    # If document_id is provided and content is empty, extract text from document
+    effective_content = request.content
+    if not effective_content and request.document_id:
+        effective_content = _extract_document_text(request.document_id)
+
     # If structured key-value notes content is provided (e.g. "Term: Definition"), extract directly
-    if request.content and ":" in request.content:
+    if effective_content and ":" in effective_content:
         synthetic = _generate_synthetic_cards(
             topic=topic_cleaned,
             count=num_cards,
             difficulty=difficulty,
-            content=request.content,
+            content=effective_content,
         )
         if len(synthetic) >= num_cards:
             return GenerateFlashcardsResponse(
@@ -345,7 +449,7 @@ async def generate_flashcards(
             topic=topic_cleaned,
             count=num_cards,
             difficulty=difficulty,
-            content=request.content,
+            content=effective_content,
         )
     except Exception as exc:
         logger.warning(f"Groq flashcard generation exception: {exc}")
@@ -356,7 +460,7 @@ async def generate_flashcards(
             topic=topic_cleaned,
             count=num_cards - len(cards),
             difficulty=difficulty,
-            content=request.content,
+            content=effective_content,
         )
         cards.extend(fallback)
 

@@ -341,6 +341,11 @@ Requires `Authorization: Bearer <jwt>` (same scheme as `/ask`). `user_id` comes 
 **Service root:** `ai-ml/knowledge_graph/`
 
 **Default local base URL:** `http://127.0.0.1:8005`
+## Roadmap Generation (Team Lambda)
+
+**Service root:** `ai-ml/roadmap_generator/`
+
+**Default local base URL:** `http://127.0.0.1:8004` *(pending final port confirmation)*
 
 **Run:**
 
@@ -356,6 +361,12 @@ Interactive docs: [http://127.0.0.1:8005/docs](http://127.0.0.1:8005/docs)
 #### Authentication
 
 Requires header: `Authorization: Bearer <jwt>`, same scheme as Quiz Generation and Chatbot — verified against `JWT_SECRET_KEY` (HS256), identity read from the token's `sub` claim.
+uvicorn roadmap_generator.app.main:app --reload --port 8004
+```
+
+Interactive docs: [http://127.0.0.1:8004/docs](http://127.0.0.1:8004/docs)
+
+**Auth:** Requires `Authorization: Bearer <jwt>` on every endpoint (same scheme as Quiz Generation and Weak Topic Detection — HS256, `JWT_SECRET_KEY`, identity from the token's `sub` claim).
 
 ---
 
@@ -443,3 +454,94 @@ Deletes all graph edges for the authenticated user.
 | `403` | Missing `Authorization` header |
 | `401` | Token present but invalid/expired |
 | `500` | Server missing `JWT_SECRET_KEY` |
+### `POST /generate-roadmap`
+
+Supports three generation modes via the `mode` field. Exactly one mode's required field(s) must be supplied.
+
+#### Request body — common fields
+
+| Field | Type | Required | Default | Notes |
+|-------|------|----------|---------|-------|
+| `mode` | string | yes | — | One of: `topic`, `document`, `quiz_performance` |
+| `subject` | string | no | `""` | Optional overall title for the roadmap |
+| `step_count` | integer | no | `6` | Clamped **3–15** |
+
+#### Mode: `topic`
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `topic_names` | array[string] | **yes** (for this mode) | List of topic/subject names |
+| `priorities` | object | no | `{topic_name: "high"\|"normal"\|"low"}` |
+
+**Example request:**
+```json
+{
+  "mode": "topic",
+  "topic_names": ["Recursion", "Dynamic programming"],
+  "subject": "Algorithms",
+  "step_count": 4,
+  "priorities": {"Recursion": "high"}
+}
+```
+
+#### Mode: `document`
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `document_id` | string | **yes** (for this mode) | Must belong to the authenticated user |
+
+Topics are extracted automatically from the document's ingested content (YAKE keyword extraction). Returns **400** if the document has no content, doesn't exist, or belongs to a different user (these cases are indistinguishable in the response, by design).
+
+**Example request:**
+```json
+{
+  "mode": "document",
+  "document_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "step_count": 6
+}
+```
+
+#### Mode: `quiz_performance`
+
+No mode-specific fields — uses the authenticated user's Weak Topic Detection results. Weak topics are prioritized ("high") in the generated sequence. Returns **400** if no weak topics are found (e.g. user hasn't taken a quiz yet).
+
+**Example request:**
+```json
+{
+  "mode": "quiz_performance",
+  "step_count": 5
+}
+```
+
+**Known limitation:** Weak Topic Detection currently reads from a static demo dataset, not live per-user quiz history — `quiz_performance` mode inherits this limitation until per-user quiz ingestion is wired in.
+
+#### Response `200` (all modes — same shape)
+
+```json
+{
+  "success": true,
+  "message": "Generated 4 steps.",
+  "mode": "topic",
+  "subject": "Algorithms",
+  "steps": [
+    {
+      "step_number": 1,
+      "topic": "Recursion Fundamentals",
+      "description": "Learn base cases, call stack mechanics...",
+      "estimated_duration": "2-3 days"
+    }
+  ],
+  "total_steps": 4
+}
+```
+
+#### Errors
+
+
+| Status | When |
+|--------|------|
+| `400` | Missing mode-specific required field; invalid `mode`; no content/topics found for the given input |
+| `401` | Token present but invalid/expired |
+| `403` | Missing `Authorization` header |
+| `422` | Request body fails schema validation |
+| `502` | Upstream generation error (e.g. LLM returned malformed data) |

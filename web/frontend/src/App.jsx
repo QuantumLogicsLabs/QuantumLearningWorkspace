@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import "./App.css";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
-import { ToastProvider } from "./context/ToastContext.jsx";
+import { ToastProvider, useToast } from "./context/ToastContext.jsx";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
 import LandingPage from "./components/LandingPage.jsx";
 import Login from "./components/Login.jsx";
@@ -20,6 +20,7 @@ function LoggedInView() {
 function AppContent() {
   const [page, setPage] = useState("landing");
   const { login, isLoggedIn } = useAuth();
+  const { showToast } = useToast() || {};
   const handleLoginSuccess = (accessToken) => {
     login(accessToken);
   };
@@ -34,6 +35,25 @@ function AppContent() {
       }
       // Clean the URL back to normal, so refreshing doesn't re-trigger this
       window.history.replaceState({}, "", "/");
+      return;
+    }
+
+    // Catch OAuth errors (e.g. not configured or access denied)
+    const params = new URLSearchParams(window.location.search);
+    const oauthError = params.get("error");
+    if (oauthError) {
+      if (oauthError === "google_oauth_not_configured") {
+        showToast?.("Google Sign-In is not configured yet. Please sign in with email and password.", "error");
+      } else if (oauthError === "google_access_denied") {
+        showToast?.("Google Sign-In was cancelled.", "info");
+      } else if (oauthError.startsWith("google_")) {
+        showToast?.("Google authentication could not be completed. Please try again.", "error");
+      } else if (oauthError === "github_oauth_not_configured") {
+        showToast?.("GitHub Sign-In is not configured yet.", "error");
+      } else {
+        showToast?.("Authentication error occurred. Please try again.", "error");
+      }
+      window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
 

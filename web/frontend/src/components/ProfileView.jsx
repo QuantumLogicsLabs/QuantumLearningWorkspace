@@ -1,19 +1,38 @@
 import { useState, useEffect } from "react";
+import { CheckCircle2, Circle, FileText, MessageSquare, Zap, User, Lock, Palette, AlertTriangle, UserCog } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useToast } from "../context/ToastContext.jsx";
 import LogoutModal from "./LogoutModal.jsx";
+import DeleteAccountModal from "./DeleteAccountModal.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
 import "./ProfileView.css";
 
 export default function ProfileView({ onRequestLogout }) {
   const { token, userEmail, logout, handle401 } = useAuth();
+  const { showToast } = useToast() || {};
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const [profileData, setProfileData] = useState({
     email: userEmail || "user@example.com",
+    name: localStorage.getItem("studymind_user_name") || (userEmail ? userEmail.split("@")[0] : "Student User"),
+    username: userEmail ? userEmail.split("@")[0] : "student",
     created_at: "July 2026",
     document_count: 0,
+    days_active: 1,
   });
   const [loading, setLoading] = useState(true);
+
+  // Profile Edit States
+  const [fullName, setFullName] = useState(
+    (userEmail && localStorage.getItem(`studymind_user_name_${userEmail}`)) ||
+    (userEmail ? userEmail.split("@")[0] : "Student User")
+  );
+  const [username, setUsername] = useState(userEmail ? userEmail.split("@")[0] : "student");
+  const [profileMsg, setProfileMsg] = useState({ text: "", type: "" });
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Form states for password change
   const [oldPassword, setOldPassword] = useState("");
@@ -33,8 +52,8 @@ export default function ProfileView({ onRequestLogout }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
-  const initial = userEmail ? userEmail[0].toUpperCase() : "U";
-  const displayName = userEmail ? userEmail.split("@")[0] : "Student User";
+  const initial = (profileData.name || userEmail || "U")[0].toUpperCase();
+  const displayName = profileData.name || (userEmail ? userEmail.split("@")[0] : "Student User");
 
   const getLocalQuestionCount = () => {
     try {
@@ -64,8 +83,10 @@ export default function ProfileView({ onRequestLogout }) {
     if (!token) return;
     setLoading(true);
 
+    const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
     Promise.all([
-      fetch(`${API_BASE}/me`, {
+      fetch(`${API_BASE}/me?tz=${encodeURIComponent(userTz)}`, {
         headers: { Authorization: `Bearer ${token}` },
       }).then((res) => {
         if (handle401(res)) return null;
@@ -87,18 +108,88 @@ export default function ProfileView({ onRequestLogout }) {
             ? meData.question_count
             : getLocalQuestionCount();
 
+        const userScopedName = userEmail ? localStorage.getItem(`studymind_user_name_${userEmail}`) : null;
+        const currentName =
+          meData?.name ||
+          userScopedName ||
+          (userEmail ? userEmail.split("@")[0] : "Student User");
+        const currentUsername =
+          meData?.username ||
+          (userEmail ? userEmail.split("@")[0] : "student");
+
         setProfileData({
           email: meData?.email || userEmail || "user@example.com",
+          name: currentName,
+          username: currentUsername,
           created_at: meData?.created_at || "August 2026",
           document_count: liveCount,
           question_count: liveQuestions,
+          days_active: meData?.days_active || 1,
         });
+        setFullName(currentName);
+        setUsername(currentUsername);
       })
       .catch(() => {})
       .finally(() => {
         setLoading(false);
       });
   }, [token, userEmail]);
+
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    setProfileMsg({ text: "", type: "" });
+
+    if (!fullName.trim()) {
+      setProfileMsg({ text: "Display name cannot be empty.", type: "error" });
+      return;
+    }
+
+    setIsSavingProfile(true);
+    try {
+      const res = await fetch(`${API_BASE}/update-profile`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: fullName.trim(),
+          username: username.trim() || undefined,
+        }),
+      });
+
+      if (handle401(res)) return;
+      const data = await res.json();
+
+      if (!res.ok) {
+        setProfileMsg({ text: data.detail || "Failed to update profile.", type: "error" });
+        return;
+      }
+
+      const savedName = data.name || fullName.trim();
+      const savedUser = data.username || username.trim();
+
+      setProfileData((prev) => ({
+        ...prev,
+        name: savedName,
+        username: savedUser,
+      }));
+      setFullName(savedName);
+      setUsername(savedUser);
+      localStorage.setItem("studymind_user_name", savedName);
+      if (userEmail) {
+        localStorage.setItem(`studymind_user_name_${userEmail}`, savedName);
+        localStorage.setItem("studymind_cached_email", userEmail);
+      }
+
+      setProfileMsg({ text: "✓ Display name updated successfully!", type: "success" });
+      window.dispatchEvent(new Event("studymind_profile_updated"));
+    } catch (err) {
+      setProfileMsg({ text: err.message || "Failed to update profile.", type: "error" });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   // Password Requirements Checking
   const hasLength = newPassword.length >= 6;
@@ -182,7 +273,7 @@ export default function ProfileView({ onRequestLogout }) {
       }
 
       setFormMsg({
-        text: "✓ Password changed successfully! Logging out... Please log in with your new password.",
+        text: "Password changed successfully! Logging out... Please log in with your new password.",
         type: "success",
       });
 
@@ -197,6 +288,61 @@ export default function ProfileView({ onRequestLogout }) {
       setFormMsg({ text: err.message || "Network error while changing password.", type: "error" });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!token) return;
+    setIsDeletingAccount(true);
+    setDeleteError("");
+    try {
+      const response = await fetch(`${API_BASE}/delete-account`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (handle401(response)) return;
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setDeleteError(data.detail || "Failed to delete account. Please try again.");
+        return;
+      }
+
+      setShowDeleteModal(false);
+
+      // Clean up all local storage artifacts for this user
+      try {
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("studymind_user_name");
+        localStorage.removeItem("studymind_cached_email");
+        localStorage.removeItem("studymind_last_activity");
+        localStorage.removeItem("studymind_chat_history");
+        if (userEmail) {
+          localStorage.removeItem(`studymind_user_name_${userEmail}`);
+          localStorage.removeItem(`studymind_chat_history_${userEmail}`);
+        }
+      } catch (e) {
+        // ignore storage errors
+      }
+
+      if (showToast) {
+        showToast("Your account has been deleted permanently.", "info");
+      }
+
+      if (onRequestLogout) {
+        onRequestLogout();
+      } else {
+        logout();
+      }
+    } catch (err) {
+      console.error("Delete account error:", err);
+      setDeleteError(err.message || "Network error while deleting account.");
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -218,18 +364,18 @@ export default function ProfileView({ onRequestLogout }) {
       {/* Stats Cards */}
       <div className="profile-stats">
         <div className="stat-card">
-          <div className="stat-icon">📄</div>
+          <div className="stat-icon"><FileText size={20} /></div>
           <div className="stat-value">{profileData.document_count}</div>
           <div className="stat-label">Documents Uploaded</div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon">💬</div>
+          <div className="stat-icon"><MessageSquare size={20} /></div>
           <div className="stat-value">{profileData.question_count ?? 0}</div>
           <div className="stat-label">Questions Asked</div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon">⚡</div>
-          <div className="stat-value">3</div>
+          <div className="stat-icon"><Zap size={20} /></div>
+          <div className="stat-value">{profileData.days_active ?? 1}</div>
           <div className="stat-label">Days Active</div>
         </div>
       </div>
@@ -238,7 +384,15 @@ export default function ProfileView({ onRequestLogout }) {
       <div className="profile-sections">
         {/* Account Information Card */}
         <div className="profile-section-card">
-          <h3>👤 Account Information</h3>
+          <h3><User size={16} style={{ verticalAlign: "middle", marginRight: "6px" }} />Account Information</h3>
+          <div className="info-row">
+            <span className="info-label">Display Name</span>
+            <span className="info-value">{profileData.name || "Student User"}</span>
+          </div>
+          <div className="info-row">
+            <span className="info-label">Username</span>
+            <span className="info-value">@{profileData.username || "student"}</span>
+          </div>
           <div className="info-row">
             <span className="info-label">Email</span>
             <span className="info-value">{profileData.email}</span>
@@ -259,8 +413,58 @@ export default function ProfileView({ onRequestLogout }) {
           </div>
         </div>
 
-        {/* Change Password Form Card */}
+        {/* Edit Profile & Display Name Card */}
         <div className="profile-section-card">
+          <h3><UserCog size={16} style={{ verticalAlign: "middle", marginRight: "6px" }} />Edit Profile & Display Name</h3>
+          <p className="profile-edit-subtext">
+            Change your display name and username. These will be visible on your Dashboard, greetings, and AI study sessions.
+          </p>
+          <form onSubmit={handleProfileUpdate} className="profile-edit-form">
+            <div className="form-group">
+              <label className="form-label">Display Name / Full Name</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. Ashar or Muhammad Ashar"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                maxLength={50}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Username</label>
+              <div className="username-input-wrapper">
+                <span className="username-prefix">@</span>
+                <input
+                  type="text"
+                  className="form-input username-field"
+                  placeholder="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.-]/g, ""))}
+                  maxLength={30}
+                />
+              </div>
+            </div>
+
+            {profileMsg.text && (
+              <div className={`profile-status-msg ${profileMsg.type}`}>
+                {profileMsg.text}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="save-profile-btn"
+              disabled={isSavingProfile}
+            >
+              {isSavingProfile ? "Saving..." : "Save Changes"}
+            </button>
+          </form>
+        </div>
+
+        {/* Change Password Form Card */}
+        <div className="profile-section-card full-width">
           <h3>🔒 Change Password</h3>
           <form onSubmit={handlePasswordSubmit} className="change-pw-form">
             {/* Old Password */}
@@ -317,16 +521,16 @@ export default function ProfileView({ onRequestLogout }) {
               {/* Password Requirements */}
               <div className="password-requirements">
                 <div className={`req-item ${hasLength ? "met" : ""}`}>
-                  <span className="req-icon">{hasLength ? "✓" : "○"}</span> At least 6 characters
+                  <span className="req-icon">{hasLength ? <CheckCircle2 size={13} /> : <Circle size={13} />}</span> At least 6 characters
                 </div>
                 <div className={`req-item ${hasUpper ? "met" : ""}`}>
-                  <span className="req-icon">{hasUpper ? "✓" : "○"}</span> At least 1 uppercase letter
+                  <span className="req-icon">{hasUpper ? <CheckCircle2 size={13} /> : <Circle size={13} />}</span> At least 1 uppercase letter
                 </div>
                 <div className={`req-item ${hasLower ? "met" : ""}`}>
-                  <span className="req-icon">{hasLower ? "✓" : "○"}</span> At least 1 lowercase letter
+                  <span className="req-icon">{hasLower ? <CheckCircle2 size={13} /> : <Circle size={13} />}</span> At least 1 lowercase letter
                 </div>
                 <div className={`req-item ${hasNumber ? "met" : ""}`}>
-                  <span className="req-icon">{hasNumber ? "✓" : "○"}</span> At least 1 number
+                  <span className="req-icon">{hasNumber ? <CheckCircle2 size={13} /> : <Circle size={13} />}</span> At least 1 number
                 </div>
               </div>
             </div>
@@ -376,7 +580,7 @@ export default function ProfileView({ onRequestLogout }) {
 
         {/* Appearance & Preferences Card */}
         <div className="profile-section-card full-width">
-          <h3>🎨 Appearance & Preferences</h3>
+          <h3><Palette size={16} style={{ verticalAlign: "middle", marginRight: "6px" }} />Appearance &amp; Preferences</h3>
           <div className="info-row">
             <div>
               <span className="info-label" style={{ display: "block", fontSize: "0.9rem", fontWeight: "600", color: "var(--color-text-primary)" }}>Theme</span>
@@ -414,11 +618,14 @@ export default function ProfileView({ onRequestLogout }) {
 
         {/* Danger Zone */}
         <div className="danger-zone full-width">
-          <h3>⚠️ Danger Zone</h3>
+          <h3><AlertTriangle size={16} style={{ verticalAlign: "middle", marginRight: "6px" }} />Danger Zone</h3>
           <p>Irreversible actions. Please be careful.</p>
           <button
             className="btn-delete-account"
-            onClick={() => alert("Are you sure? This will delete your account and all data.")}
+            onClick={() => {
+              setDeleteError("");
+              setShowDeleteModal(true);
+            }}
             type="button"
           >
             Delete Account
@@ -433,6 +640,19 @@ export default function ProfileView({ onRequestLogout }) {
           setShowLogoutModal(false);
           logout();
         }}
+      />
+
+      <DeleteAccountModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          if (!isDeletingAccount) {
+            setShowDeleteModal(false);
+            setDeleteError("");
+          }
+        }}
+        onConfirm={handleDeleteAccount}
+        isDeleting={isDeletingAccount}
+        errorMessage={deleteError}
       />
     </div>
   );

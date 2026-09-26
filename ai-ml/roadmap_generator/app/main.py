@@ -6,13 +6,15 @@ imports resolve):
   uvicorn roadmap_generator.app.main:app --reload --port <TBD — confirm with captain, tentative 8004>
 
 Interactive docs (once running): http://127.0.0.1:<port>/docs
+
+Supports three generation modes via the "mode" field on
+POST /generate-roadmap: "topic", "document", "quiz_performance".
+See docs/api-contracts.md for the full contract.
 """
 
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
-# Reusing the JWT auth dependency already built for quiz_generator
-# (Contract v1, Section 10) — same as weak_topic_detection's endpoint.
 from quiz_generator.app.auth import get_current_user_id
 
 from roadmap_generator.app.models.api_models import (
@@ -52,26 +54,35 @@ def generate_roadmap_endpoint(
     user_id: str = Depends(get_current_user_id),
 ) -> GenerateRoadmapResponse:
     """
-    Requires "Authorization: Bearer <jwt>".
-
-    user_id is derived from the verified token and required for
-    consistency with Contract v1's auth pattern (every Lambda
-    endpoint requires auth), but this module is general-purpose and
-    doesn't read per-user content — it only uses the topic_names the
-    caller supplies. If a future version personalizes roadmaps using
-    a user's own ingested content or weak-topic results, user_id is
-    already available here to wire that in without another contract
-    change.
+    Requires "Authorization: Bearer <jwt>". Dispatches to the correct
+    generation path based on body.mode:
+      - "topic":            uses body.topic_names / body.priorities
+      - "document":         uses body.document_id, scoped to this user
+      - "quiz_performance":  uses this user's weak-topic results
     """
     service = get_service()
 
     try:
-        roadmap = service.generate_roadmap(
-            topic_names=body.topic_names,
-            subject=body.subject,
-            step_count=body.step_count,
-            priorities=body.priorities,
-        )
+        if body.mode == "topic":
+            roadmap = service.generate_roadmap(
+                topic_names=body.topic_names,
+                subject=body.subject,
+                step_count=body.step_count,
+                priorities=body.priorities,
+            )
+        elif body.mode == "document":
+            roadmap = service.generate_roadmap_from_document(
+                user_id=user_id,
+                document_id=body.document_id,
+                subject=body.subject,
+                step_count=body.step_count,
+            )
+        else:  # "quiz_performance"
+            roadmap = service.generate_roadmap_from_quiz_performance(
+                user_id=user_id,
+                subject=body.subject,
+                step_count=body.step_count,
+            )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:
@@ -80,6 +91,7 @@ def generate_roadmap_endpoint(
     return GenerateRoadmapResponse(
         success=True,
         message=f"Generated {roadmap.total_steps} steps.",
+        mode=body.mode,
         subject=roadmap.subject,
         steps=[step.model_dump() for step in roadmap.steps],
         total_steps=roadmap.total_steps,
