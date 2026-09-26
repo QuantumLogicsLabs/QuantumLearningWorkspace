@@ -114,13 +114,22 @@ class GraphService:
 
         return {"user_id": user_id, "document_id": document_id, "edges_created": len(new_edges)}
 
-    def get_graph(self, user_id: str) -> dict:
+    def get_graph(self, user_id: str, document_id: str = None) -> dict:
         """
         Returns { "nodes": [...], "edges": [...] } for this user,
         combining both document- and topic-level edges. Nodes are
         derived from the user's currently embedded documents, so the
         node list always reflects current content even if the graph
         hasn't been rebuilt since the last edit.
+
+        [Objective 2] document_id, if given, filters the result to
+        just that document plus its direct connections ("document
+        mode") — omit it for the full graph (unchanged default
+        behavior). No "topic mode" is implemented: a graph built from
+        relationships between existing documents has no natural
+        equivalent to a free-text topic input the way quiz/roadmap
+        generation does — flagged to Pluto/Commander rather than
+        forced.
         """
         validate_user_id(user_id)
 
@@ -132,11 +141,24 @@ class GraphService:
                 "id": doc_id,
                 "title": data["title"],
                 "node_type": "document",
-                "definition": metadata["definition"],  # [Task 4] "" if not yet generated
-                "source_document": data["title"],       # [Task 4] same as title for document-level nodes
+                "definition": metadata["definition"],
+                "source_document": data["title"],
             })
 
         edges = graph_store.get_edges(user_id)
+
+        if document_id:
+            edges = [
+                e for e in edges
+                if document_id in (e["source_id"], e["target_id"])
+                or e["source_id"].startswith(f"{document_id}_")
+                or e["target_id"].startswith(f"{document_id}_")
+            ]
+            connected_ids = {document_id}
+            for e in edges:
+                connected_ids.add(e["source_id"].split("_")[0])
+                connected_ids.add(e["target_id"].split("_")[0])
+            nodes = [n for n in nodes if n["id"] in connected_ids]
 
         return {"nodes": nodes, "edges": edges}
 

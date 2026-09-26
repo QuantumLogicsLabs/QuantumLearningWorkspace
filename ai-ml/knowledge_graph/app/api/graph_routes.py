@@ -44,9 +44,17 @@ def health_check():
 
 
 @app.get("/graph")
-def get_graph_endpoint(user_id: str = Depends(get_current_user_id)) -> dict:
-    """Returns the authenticated user's current knowledge graph."""
-    return get_service().get_graph(user_id)
+def get_graph_endpoint(
+    document_id: str = None,
+    user_id: str = Depends(get_current_user_id),
+) -> dict:
+    """
+    Returns the authenticated user's current knowledge graph.
+    [Objective 2] Pass ?document_id=... to filter to a single
+    document's connections ("document mode"). Omit for the full
+    graph (unchanged default).
+    """
+    return get_service().get_graph(user_id, document_id=document_id)
 
 
 @app.post("/graph/rebuild")
