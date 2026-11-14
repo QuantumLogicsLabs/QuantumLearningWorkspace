@@ -69,10 +69,26 @@ def _update_knowledge_graph(user_id: str, document_id: str) -> None:
         pass
 
 
-def _chunk_and_store(result: dict, user_id: str) -> dict:
-    """Shared helper: chunk an ingested document and store it in ChromaDB."""
-    document_id = str(uuid.uuid4())
+class NoTextExtractedError(ValueError):
+    """The file was read, but no usable text came out of it."""
+
+
+def _chunk_and_store(result: dict, user_id: str, require_text: bool = False) -> dict:
+    """
+    Shared helper: chunk an ingested document and store it in ChromaDB.
+
+    require_text=True raises NoTextExtractedError when nothing could be
+    chunked (empty file, image-only slides, blank sheet) instead of
+    reporting success with 0 chunks. Used by /ingest/file; the older
+    endpoints keep their previous behavior.
+    """
     chunks = chunk_document(result)
+    if require_text and not chunks:
+        raise NoTextExtractedError(
+            "No readable text could be extracted from this file. "
+            "It may be empty, scanned or image-only, or password protected."
+        )
+    document_id = str(uuid.uuid4())
     stored_count = store_chunks(
         chunks=chunks,
         user_id=user_id,
@@ -186,3 +202,51 @@ async def delete_document_endpoint(
     """
     delete_chunks(document_id)
     return {"success": True, "message": f"Document {document_id} purged."}
+
+# -----------------------------
+# OTHER FILE FORMATS (docx/doc, txt, md, csv/xlsx, pptx/ppt)
+# -----------------------------
+ALLOWED_FILE_EXTENSIONS = {".docx", ".doc", ".txt", ".md", ".csv", ".xlsx", ".pptx", ".ppt"}
+
+
+@app.post("/ingest/file")
+async def ingest_file_endpoint(
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    Ingest any non-PDF document the parsers support. The parser
+    (ingestion.files.extractor.ingest_file) returns the common-format
+    dict, optionally with "sections" (one entry per slide / block of
+    rows); chunking and ChromaDB storage are shared with every other
+    source. Empty or unreadable files return 422, not a silent success.
+    """
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in ALLOWED_FILE_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type '{ext}'. Allowed: {', '.join(sorted(ALLOWED_FILE_EXTENSIONS))}",
+        )
+
+    try:
+        from ingestion.files.extractor import ingest_file  # written by the parser owner
+    except ImportError as e:
+        raise HTTPException(status_code=501, detail=f"File parsers are not available: {e}")
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+        shutil.copyfileobj(file.file, tmp)
+        tmp_path = tmp.name
+
+    try:
+        result = ingest_file(file_path=tmp_path, original_filename=file.filename)
+        storage_info = _chunk_and_store(result, user_id, require_text=True)
+    except NoTextExtractedError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+    response = {k: v for k, v in result.items() if k != "sections"}
+    return {**response, **storage_info}
