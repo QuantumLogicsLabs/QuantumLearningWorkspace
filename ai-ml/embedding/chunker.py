@@ -51,7 +51,7 @@ def chunk_document(document: dict, chunk_size: int = None, overlap: int = None) 
     """
     document: common ingestion schema dict, e.g.
       {
-        "source_type": "pdf" | "youtube" | "article",
+        "source_type": "...",  # e.g. "pdf", "docx", "txt", "youtube", "article"
         "title": "...",
         "text": "...",
         "metadata": {"author": "", "date": "", "source": ""}

@@ -1,7 +1,7 @@
 """
 Common Data Format
 -------------------
-Every ingestion module (pdf / youtube / web) must return output
+Every ingestion module (documents / youtube / web) must return output
 in this exact shape so downstream modules (chunking, embedding,
 vector DB, RAG chatbot, quiz generation) can work without knowing
 the original source.
@@ -20,7 +20,7 @@ class Metadata:
 
 @dataclass
 class IngestResult:
-    source_type: str          # "pdf" | "youtube" | "article"
+    source_type: str          # File extension, "youtube", or "article"
     title: str
     text: str
     metadata: Metadata = field(default_factory=Metadata)

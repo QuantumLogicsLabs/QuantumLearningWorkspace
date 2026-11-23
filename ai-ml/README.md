@@ -1,12 +1,12 @@
 # StudyMind AI — Ingestion, Embedding & Quiz Generator Pipeline
 
-StudyMind AI is a Retrieval-Augmented Generation (RAG) pipeline that turns raw content (YouTube videos, web articles, PDFs) into searchable knowledge — and then uses that knowledge to generate structured, factual quizzes.
+StudyMind AI is a Retrieval-Augmented Generation (RAG) pipeline that turns raw content (YouTube videos, web articles, PDFs, and common text and office files) into searchable knowledge — and then uses that knowledge to generate structured, factual quizzes.
 
 The system is made up of **three modules** that work together:
 
 | Module | Role |
 |---|---|
-| **Ingestion** | FastAPI server that receives and processes raw content (PDFs, articles, YouTube) |
+| **Ingestion** | FastAPI server that receives and processes raw content (documents, PDFs, articles, YouTube) |
 | **Embedding** | Chunks text, generates embeddings, and stores them in MongoDB + Pinecone |
 | **Quiz Generator** | Retrieves stored content via vector search and generates JSON quizzes using an LLM (Groq) |
 
@@ -33,7 +33,7 @@ The system is made up of **three modules** that work together:
 Data flows through the pipeline in two stages:
 
 **Stage 1 — Ingest & Embed:**
-`Source (YouTube / Article / PDF) → Ingestion Server → Chunking → Embedding → MongoDB + Pinecone`
+`Source (YouTube / Article / PDF / DOCX / TXT / MD / CSV / XLSX / PPTX) → Ingestion Server → Chunking → Embedding → MongoDB + Pinecone`
 
 **Stage 2 — Generate Quiz (RAG):**
 `Topic Query → Pinecone Vector Search → MongoDB Chunk Retrieval → Groq LLM → Structured JSON Quiz`
@@ -190,6 +190,8 @@ python -m embedding.embedder --article "https://example.com/some-article"
 ```bash
 python -m embedding.embedder --pdf "C:\path\to\file.pdf"
 ```
+
+The authenticated `POST /ingest/file` endpoint also accepts `.docx`, `.doc`, `.txt`, `.md`, `.csv`, `.xlsx`, `.pptx`, and `.ppt` uploads. DOCX, PPTX, and XLSX parsing uses the Python packages in `requirements.txt`; the older `.doc` and `.ppt` formats additionally require LibreOffice (`soffice`) on `PATH` for conversion.
 
 **Quick sanity check** (no external input, uses a hardcoded sample):
 ```bash

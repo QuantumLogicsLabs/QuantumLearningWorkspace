@@ -24,3 +24,6 @@ pytesseract
 Pillow
 openai-whisper
 yt-dlp
+python-docx>=1.1.2,<2.0.0
+python-pptx>=1.0.2,<2.0.0
+openpyxl>=3.1.5,<4.0.0

@@ -35,6 +35,8 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from pydantic import BaseModel
 from embedding.chroma_store import delete_chunks
 from ingestion.pdf.extractor import ingest_pdf
+from ingestion.file.extractor import SUPPORTED_FILE_EXTENSIONS, ingest_file
+from ingestion.common.exceptions import FileProcessingError, UnsupportedFileTypeError
 from ingestion.youtube.transcript import ingest_youtube
 from ingestion.web.scraper import ingest_article
 from embedding.chunker import chunk_document
@@ -112,6 +114,42 @@ async def ingest_pdf_endpoint(
         storage_info = _chunk_and_store(result, user_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+    return {**result, **storage_info}
+
+
+@app.post("/ingest/file")
+def ingest_file_endpoint(
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user_id),
+):
+    """Ingest a supported document or text file."""
+    filename = os.path.basename((file.filename or "").replace("\\", "/"))
+    extension = os.path.splitext(filename)[1].lower()
+    if not filename:
+        raise HTTPException(status_code=400, detail="File name is required")
+    if extension not in SUPPORTED_FILE_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {extension or '(no extension)'}",
+        )
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=extension) as tmp:
+        shutil.copyfileobj(file.file, tmp)
+        tmp_path = tmp.name
+
+    try:
+        result = ingest_file(tmp_path, filename)
+        storage_info = _chunk_and_store(result, user_id)
+    except UnsupportedFileTypeError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except FileProcessingError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
