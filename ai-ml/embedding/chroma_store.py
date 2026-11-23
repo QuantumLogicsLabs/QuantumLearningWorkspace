@@ -63,15 +63,21 @@ def store_chunks(chunks: list[dict], user_id: str, document_id: str, title: str)
 
     ids = [f"{document_id}_chunk{c['chunk_index']}" for c in chunks]
     documents = [c["text"] for c in chunks]
-    metadatas = [
-        {
+    metadatas = []
+    for c in chunks:
+        meta = {
             "user_id": user_id,
             "document_id": document_id,
             "document": title,
             "chunk_index": c["chunk_index"],
         }
-        for c in chunks
-    ]
+        # Chroma metadata values must be str/int/float/bool (never None), so
+        # the optional tags are only added when they have a value.
+        if c.get("source_type"):
+            meta["source_type"] = str(c["source_type"])
+        if c.get("section"):
+            meta["section"] = str(c["section"])
+        metadatas.append(meta)
     embeddings = model.encode(documents)  # list[list[float]], already normalized
 
     collection.upsert(
