@@ -1,7 +1,7 @@
 """
 Text Cleaning Module
 ---------------------
-All extracted content (pdf / youtube / web) passes through this
+All extracted content (documents / pdf / youtube / web) passes through this
 SAME cleaning process before being wrapped in the common schema.
 
 Tasks:
